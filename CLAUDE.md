@@ -28,7 +28,7 @@ helpdesk/
 ├── dev.ts                  # Spawns client + server concurrently
 ├── package.json            # Bun workspace root
 ├── tsconfig.json           # Root tsconfig (bun-types)
-├── .env.example            # All required environment variables
+├── .env.example            # All required environment variables (template)
 ├── client/                 # React + Vite frontend
 │   ├── src/
 │   │   ├── App.tsx
@@ -36,8 +36,13 @@ helpdesk/
 │   │   └── index.css       # @import 'tailwindcss'
 │   └── vite.config.ts      # Tailwind plugin + /api proxy → localhost:3000
 └── server/                 # Express backend
+    ├── .env                # Server environment variables (git-ignored)
+    ├── prisma/
+    │   └── schema.prisma   # Prisma schema and data models
     ├── src/
     │   ├── index.ts        # App entry: cors, json, router
+    │   ├── lib/
+    │   │   └── prisma.ts   # Prisma client singleton
     │   └── routes/
     │       └── index.ts    # GET /api/health
     └── tsconfig.json
@@ -61,19 +66,21 @@ The Vite dev server proxies all `/api/*` requests to the Express server — no C
 
 ## Environment Setup
 
-Copy `.env.example` to `.env` and fill in the values:
+The server reads from `server/.env` (its CWD at runtime). Copy `.env.example` there:
 
 ```bash
-cp .env.example .env
+cp .env.example server/.env
 ```
 
 Required variables:
 - `PORT` — Express server port (default 3000)
 - `CLIENT_URL` — Allowed CORS origin (default http://localhost:5173)
-- `DATABASE_URL` — PostgreSQL connection string
+- `DATABASE_URL` — PostgreSQL connection string (e.g. `postgresql://postgres:pass%40@localhost:5432/helpdesk`)
 - `SESSION_SECRET` — Long random string for session signing
 - `ANTHROPIC_API_KEY` — Claude API key
 - `RESEND_API_KEY` — Resend email API key
+
+**Note:** The `@` character in passwords must be URL-encoded as `%40` in the DATABASE_URL.
 
 ## Key Conventions
 
@@ -98,7 +105,7 @@ Key library IDs already resolved:
 - Bun: `/oven-sh/bun`
 - Express: `/websites/expressjs_en_5`
 - Vite: `/vitejs/vite`
-- Prisma: resolve before use
+- Prisma: `/websites/prisma_io`
 - shadcn/ui: resolve before use
 - Anthropic SDK: resolve before use
 - Resend: resolve before use
@@ -108,3 +115,4 @@ Key library IDs already resolved:
 Phases are tracked in `implementation-plan.md`. Currently completed:
 
 - [x] Phase 1 — Project setup (Bun workspace, Vite, Express, Tailwind, Docker removed)
+- [x] Phase 2 (partial) — Prisma installed, connected to local `helpdesk` PostgreSQL database, client singleton created (`server/src/lib/prisma.ts`)
