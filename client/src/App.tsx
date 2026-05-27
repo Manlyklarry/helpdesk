@@ -1,32 +1,42 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
+import { authClient } from './lib/auth-client'
+import { LoginPage } from './pages/LoginPage'
+import { HomePage } from './pages/HomePage'
 
-type HealthStatus = { status: string; timestamp: string }
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { data: session, isPending } = authClient.useSession()
+
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <span className="text-sm text-gray-500">Loading…</span>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <>{children}</>
+}
 
 function App() {
-  const [health, setHealth] = useState<HealthStatus | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((res) => res.json())
-      .then(setHealth)
-      .catch(() => setError('Could not reach the server.'))
-  }, [])
-
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-semibold text-gray-900">Helpdesk</h1>
-        <p className="text-gray-500">AI-Powered Ticket Management</p>
-
-        {health && (
-          <p className="text-green-600 text-sm">
-            Server is <span className="font-medium">{health.status}</span> &mdash; {new Date(health.timestamp).toLocaleTimeString()}
-          </p>
-        )}
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
