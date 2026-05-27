@@ -15,7 +15,7 @@ See `project-scope.md` for full feature list and `implementation-plan.md` for th
 | Backend    | Express 5 + TypeScript          |
 | Styling    | Tailwind CSS v4 + shadcn/ui     |
 | Database   | PostgreSQL + Prisma             |
-| Auth       | express-session + connect-pg-simple (database sessions) |
+| Auth       | Better Auth (email/password, database sessions via PostgreSQL) |
 | AI         | Anthropic Claude API            |
 | Email      | Resend (inbound webhook + outbound) |
 
@@ -39,10 +39,12 @@ helpdesk/
     ├── .env                # Server environment variables (git-ignored)
     ├── prisma/
     │   └── schema.prisma   # Prisma schema and data models
+    ├── prisma.config.ts    # Prisma v7 config (datasource URL, schema path)
     ├── src/
-    │   ├── index.ts        # App entry: cors, json, router
+    │   ├── index.ts        # App entry: cors, auth handler, json, router
     │   ├── lib/
-    │   │   └── prisma.ts   # Prisma client singleton
+    │   │   ├── db.ts       # Prisma client singleton (PrismaPg adapter)
+    │   │   └── auth.ts     # Better Auth instance (email/password)
     │   └── routes/
     │       └── index.ts    # GET /api/health
     └── tsconfig.json
@@ -76,7 +78,8 @@ Required variables:
 - `PORT` — Express server port (default 3000)
 - `CLIENT_URL` — Allowed CORS origin (default http://localhost:5173)
 - `DATABASE_URL` — PostgreSQL connection string (e.g. `postgresql://postgres:pass%40@localhost:5432/helpdesk`)
-- `SESSION_SECRET` — Long random string for session signing
+- `BETTER_AUTH_SECRET` — Long random string (32+ chars) for session signing
+- `BETTER_AUTH_URL` — Server base URL (e.g. `http://localhost:3000`)
 - `ANTHROPIC_API_KEY` — Claude API key
 - `RESEND_API_KEY` — Resend email API key
 
@@ -87,7 +90,10 @@ Required variables:
 - All API routes are prefixed `/api/`
 - Server runs TypeScript natively via Bun — no compile step in development
 - Tailwind v4 is configured via the `@tailwindcss/vite` plugin — no `tailwind.config.js`
-- Database sessions stored in PostgreSQL via `connect-pg-simple`
+- Better Auth handles sessions in PostgreSQL — `toNodeHandler(auth)` must be mounted **before** `express.json()` in Express
+- Better Auth routes live at `/api/auth/*` — sign-up: `POST /api/auth/sign-up/email`, sign-in: `POST /api/auth/sign-in/email`, session: `GET /api/auth/get-session`
+- Prisma v7 uses `prisma.config.ts` for the datasource URL — `url` is not in `schema.prisma`
+- Prisma CLI must be run with `DATABASE_URL` in env: `$env:DATABASE_URL=...; .\node_modules\.bin\prisma migrate dev`
 - Email threading uses `Message-ID` / `In-Reply-To` headers
 
 ## Using Context7 for Documentation
@@ -106,6 +112,7 @@ Key library IDs already resolved:
 - Express: `/websites/expressjs_en_5`
 - Vite: `/vitejs/vite`
 - Prisma: `/websites/prisma_io`
+- Better Auth: `/websites/better-auth`
 - shadcn/ui: resolve before use
 - Anthropic SDK: resolve before use
 - Resend: resolve before use
@@ -115,4 +122,5 @@ Key library IDs already resolved:
 Phases are tracked in `implementation-plan.md`. Currently completed:
 
 - [x] Phase 1 — Project setup (Bun workspace, Vite, Express, Tailwind, Docker removed)
-- [x] Phase 2 (partial) — Prisma installed, connected to local `helpdesk` PostgreSQL database, client singleton created (`server/src/lib/prisma.ts`)
+- [x] Phase 2 (partial) — Prisma v7 installed, connected to local `helpdesk` PostgreSQL database, client singleton at `server/src/lib/db.ts`
+- [x] Phase 3 (partial) — Better Auth installed, email/password + database sessions configured, migrated to PostgreSQL, routes at `/api/auth/*`
