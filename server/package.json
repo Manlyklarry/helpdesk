@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "seed": "bun prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.8.0",
