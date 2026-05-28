@@ -14,12 +14,14 @@ export default defineConfig({
     },
   },
   server: {
+    port: Number(process.env.VITE_PORT) || 5173,
+    strictPort: !!process.env.VITE_PORT,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: `http://localhost:${process.env.VITE_API_PORT || 3000}`,
         changeOrigin: true,
         headers: {
-          origin: 'http://localhost:3000',
+          origin: `http://localhost:${process.env.VITE_API_PORT || 3000}`,
         },
       },
     },

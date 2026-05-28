@@ -3,9 +3,13 @@
   "private": true,
   "workspaces": ["client", "server"],
   "scripts": {
-    "dev": "bun dev.ts"
+    "dev": "bun dev.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:db:setup": "bun e2e/run-setup.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "bun-types": "^1.3.14"
   }
 }
