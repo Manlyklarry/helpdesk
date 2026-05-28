@@ -3,6 +3,11 @@ import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '../src/lib/db.js'
 
+if (process.env.NODE_ENV === 'production') {
+  console.error('Seed script must not run in production')
+  process.exit(1)
+}
+
 const email = process.env.SEED_ADMIN_EMAIL
 const password = process.env.SEED_ADMIN_PASSWORD
 
