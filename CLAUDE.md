@@ -30,11 +30,21 @@ helpdesk/
 ├── tsconfig.json           # Root tsconfig (bun-types)
 ├── .env.example            # All required environment variables (template)
 ├── client/                 # React + Vite frontend
+│   ├── components.json     # shadcn/ui config (style: base-nova, baseColor: neutral)
 │   ├── src/
-│   │   ├── App.tsx
+│   │   ├── App.tsx         # Routes + ProtectedRoute (authClient.useSession)
 │   │   ├── main.tsx
-│   │   └── index.css       # @import 'tailwindcss'
-│   └── vite.config.ts      # Tailwind plugin + /api proxy → localhost:3000
+│   │   ├── index.css       # Tailwind v4 + shadcn CSS variable theme
+│   │   ├── components/
+│   │   │   └── ui/         # shadcn/ui generated components (button, card, input, label)
+│   │   ├── lib/
+│   │   │   ├── auth-client.ts  # Better Auth client (createAuthClient)
+│   │   │   └── utils.ts        # cn() helper (clsx + tailwind-merge)
+│   │   └── pages/
+│   │       ├── LoginPage.tsx   # Login form (react-hook-form + zod + shadcn)
+│   │       └── HomePage.tsx
+│   ├── tsconfig.app.json   # Includes @/* → src/* path alias
+│   └── vite.config.ts      # Tailwind plugin + @/* alias + /api proxy → localhost:3000
 └── server/                 # Express backend
     ├── .env                # Server environment variables (git-ignored)
     ├── prisma/
@@ -44,7 +54,7 @@ helpdesk/
     │   ├── index.ts        # App entry: cors, auth handler, json, router
     │   ├── lib/
     │   │   ├── db.ts       # Prisma client singleton (PrismaPg adapter)
-    │   │   └── auth.ts     # Better Auth instance (email/password)
+    │   │   └── auth.ts     # Better Auth instance (email/password, role field)
     │   └── routes/
     │       └── index.ts    # GET /api/health
     └── tsconfig.json
@@ -85,6 +95,72 @@ Required variables:
 
 **Note:** The `@` character in passwords must be URL-encoded as `%40` in the DATABASE_URL.
 
+## Authentication
+
+### Server (`server/src/lib/auth.ts`)
+
+Better Auth is configured with:
+- **Adapter:** `prismaAdapter` using the shared `prisma` singleton, provider `postgresql`
+- **Email/password:** enabled, **sign-up is disabled** (`disableSignUp: true`) — accounts must be seeded
+- **Custom field:** `role` (string, required, default `"agent"`) added via `user.additionalFields`
+- **Trusted origins:** `BETTER_AUTH_URL` + `CLIENT_URL` from env
+
+The auth handler is mounted in `server/src/index.ts` **before** `express.json()`:
+```ts
+app.all('/api/auth/*splat', toNodeHandler(auth))
+```
+
+### Client (`client/src/lib/auth-client.ts`)
+
+```ts
+import { createAuthClient } from 'better-auth/react'
+export const authClient = createAuthClient()
+// baseURL defaults to window.location.origin — works because Vite proxies /api to Express
+```
+
+Key methods used across the app:
+- `authClient.signIn.email({ email, password })` — returns `{ error }` on failure
+- `authClient.signOut()` — clears the session
+- `authClient.useSession()` — React hook, returns `{ data: session, isPending }`
+
+### Route protection (`client/src/App.tsx`)
+
+`ProtectedRoute` wraps authenticated routes. It calls `authClient.useSession()` and:
+- Shows a full-screen loading state while `isPending` is true
+- Redirects to `/login` if `session` is null
+- Renders children when a session exists
+
+Current routes:
+| Path | Component | Protected |
+|------|-----------|-----------|
+| `/login` | `LoginPage` | No |
+| `/` | `HomePage` | Yes |
+| `*` | Redirect → `/` | — |
+
+### Login page (`client/src/pages/LoginPage.tsx`)
+
+Built with shadcn/ui components (Card, Input, Label, Button) and react-hook-form + Zod:
+- Schema validates email format and non-empty password
+- Uses an inline Zod resolver (avoids Vite module-identity issues with `instanceof`)
+- Sets `aria-invalid` on inputs to trigger shadcn's red-ring error state
+- On success: navigates to `/`
+- On auth error: sets a `root` form error displayed below the fields
+
+### Seeding admin users
+
+There is a seed script at `server/prisma/seed.ts` (or similar) that creates the initial admin account, since public sign-up is disabled. Run it after migrating:
+```bash
+$env:DATABASE_URL="..."; bun server/prisma/seed.ts
+```
+
+## shadcn/ui
+
+- Style: `base-nova` | Base color: `neutral` | CSS variables: enabled
+- Components live in `client/src/components/ui/`
+- Add new components: `cd client && npx shadcn@latest add <component>`
+- **Known issue:** the CLI places files in `client/@/components/ui/` (literal `@` dir) because the root `client/tsconfig.json` has no `paths`. After running `add`, move files from `client/@/components/ui/` → `client/src/components/ui/` and delete `client/@/`
+- `@base-ui/react` is required by the `base-nova` Button and Input — it is already installed
+
 ## Key Conventions
 
 - All API routes are prefixed `/api/`
@@ -113,7 +189,7 @@ Key library IDs already resolved:
 - Vite: `/vitejs/vite`
 - Prisma: `/websites/prisma_io`
 - Better Auth: `/websites/better-auth`
-- shadcn/ui: resolve before use
+- shadcn/ui: `/websites/ui_shadcn`
 - Anthropic SDK: resolve before use
 - Resend: resolve before use
 
@@ -124,3 +200,4 @@ Phases are tracked in `implementation-plan.md`. Currently completed:
 - [x] Phase 1 — Project setup (Bun workspace, Vite, Express, Tailwind, Docker removed)
 - [x] Phase 2 (partial) — Prisma v7 installed, connected to local `helpdesk` PostgreSQL database, client singleton at `server/src/lib/db.ts`
 - [x] Phase 3 (partial) — Better Auth installed, email/password + database sessions configured, migrated to PostgreSQL, routes at `/api/auth/*`
+- [x] UI foundation — shadcn/ui installed (base-nova, neutral), login page built with Card/Input/Label/Button, ProtectedRoute guarding `/`
