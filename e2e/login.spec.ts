@@ -112,8 +112,7 @@ test.describe('Login page', () => {
   }) => {
     await page.getByLabel('Email').fill('user@example.com')
     await page.getByLabel('Password').click()
-    // Click somewhere else to blur password
-    await page.getByLabel('Email').click()
+    await page.keyboard.press('Tab') // blur via Tab — more reliable than clicking another field
 
     await expect(page.getByText('Password is required')).toBeVisible()
   })
