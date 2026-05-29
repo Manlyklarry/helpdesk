@@ -29,6 +29,11 @@ helpdesk/
 ├── package.json            # Bun workspace root
 ├── tsconfig.json           # Root tsconfig (bun-types)
 ├── .env.example            # All required environment variables (template)
+├── playwright.config.ts    # Playwright E2E config (Chromium, ports 3001/5174, globalSetup)
+├── e2e/                    # E2E test files
+│   ├── global-setup.ts     # Runs migrate:deploy + seed against helpdesk_test
+│   ├── run-setup.ts        # Standalone setup runner (used by test:db:setup)
+│   └── tsconfig.json
 ├── client/                 # React + Vite frontend
 │   ├── components.json     # shadcn/ui config (style: base-nova, baseColor: neutral)
 │   ├── src/
@@ -47,6 +52,7 @@ helpdesk/
 │   └── vite.config.ts      # Tailwind plugin + @/* alias + /api proxy → localhost:3000
 └── server/                 # Express backend
     ├── .env                # Server environment variables (git-ignored)
+    ├── .env.test           # Test environment variables (git-ignored)
     ├── prisma/
     │   └── schema.prisma   # Prisma schema and data models
     ├── prisma.config.ts    # Prisma v7 config (datasource URL, schema path)
@@ -75,6 +81,31 @@ bun run dev
 - API health: http://localhost:3000/api/health
 
 The Vite dev server proxies all `/api/*` requests to the Express server — no CORS issues in development.
+
+## E2E Testing
+
+Playwright is configured at the project root with an isolated `helpdesk_test` PostgreSQL database.
+
+```bash
+bun run test:db:setup     # Seed test DB (run once before first test run)
+bun run test:e2e          # Run all E2E tests (headless)
+bun run test:e2e:ui       # Playwright UI mode
+```
+
+- Test client: http://localhost:5174 (Vite with `VITE_PORT=5174`)
+- Test server: http://localhost:3001 (Express with `server/.env.test`)
+- Test database: `helpdesk_test` (separate from dev `helpdesk` DB)
+- `globalSetup` in `e2e/global-setup.ts` runs `migrate:deploy` then `seed` before each test run
+- Seeded admin: credentials from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in `server/.env.test`
+- `workers: 1` — tests run serially against the shared test DB
+
+## Writing E2E Tests
+
+Use the **`playwright-e2e-tester`** agent for all E2E test authoring. Trigger it after implementing a new feature or page, or when explicitly asked to write tests.
+
+The agent knows the full test infrastructure setup, correct file paths, ports, credentials, and Playwright patterns for this codebase. Do not write test files directly — always delegate to that agent.
+
+**Note:** `server/.env.test` is git-ignored. It must exist locally before running tests. See `.env.example` for the variable list; the test-specific values are port 3001, `helpdesk_test` DB URL, and test-only auth credentials.
 
 ## Environment Setup
 
@@ -201,3 +232,4 @@ Phases are tracked in `implementation-plan.md`. Currently completed:
 - [x] Phase 2 (partial) — Prisma v7 installed, connected to local `helpdesk` PostgreSQL database, client singleton at `server/src/lib/db.ts`
 - [x] Phase 3 (partial) — Better Auth installed, email/password + database sessions configured, migrated to PostgreSQL, routes at `/api/auth/*`
 - [x] UI foundation — shadcn/ui installed (base-nova, neutral), login page built with Card/Input/Label/Button, ProtectedRoute guarding `/`
+- [x] E2E testing infrastructure — Playwright configured at root, isolated `helpdesk_test` DB, globalSetup with migrate + seed, `test:e2e` / `test:e2e:ui` / `test:db:setup` scripts
