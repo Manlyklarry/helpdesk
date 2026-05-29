@@ -1,8 +1,15 @@
+import { useState } from 'react'
 import axios from 'axios'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import type { Resolver } from 'react-hook-form'
+import { z } from 'zod'
 import { Navbar } from '../components/Navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 type User = {
   id: string
@@ -31,7 +38,146 @@ function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
   )
 }
 
+const createUserSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters'),
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+type CreateUserValues = z.infer<typeof createUserSchema>
+
+const createUserResolver: Resolver<CreateUserValues> = async (values) => {
+  const result = createUserSchema.safeParse(values)
+  if (result.success) return { values: result.data, errors: {} }
+  const errors: Record<string, { message: string; type: string }> = {}
+  for (const issue of result.error.issues) {
+    const key = issue.path.join('.') as keyof CreateUserValues
+    if (!errors[key]) errors[key] = { message: issue.message, type: issue.code }
+  }
+  return { values: {}, errors }
+}
+
+function CreateUserModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors },
+  } = useForm<CreateUserValues>({
+    resolver: createUserResolver,
+    mode: 'onTouched',
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateUserValues) =>
+      axios.post<User>('/api/users', data, { withCredentials: true }),
+    onSuccess: () => {
+      reset()
+      onCreated()
+    },
+    onError: (err) => {
+      const msg =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? String(err.response.data.error)
+          : 'Failed to create user'
+      setError('root', { message: msg })
+    },
+  })
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Create user</h2>
+        <form
+          onSubmit={handleSubmit((data) => mutation.mutate(data))}
+          className="space-y-4"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="new-name">Name</Label>
+            <Input
+              id="new-name"
+              type="text"
+              autoComplete="off"
+              placeholder="Jane Smith"
+              aria-invalid={!!errors.name}
+              {...register('name')}
+            />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="new-email">Email</Label>
+            <Input
+              id="new-email"
+              type="email"
+              autoComplete="off"
+              placeholder="jane@example.com"
+              aria-invalid={!!errors.email}
+              {...register('email')}
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password">Password</Label>
+            <Input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              aria-invalid={!!errors.password}
+              {...register('password')}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+
+          {errors.root && (
+            <p className="text-sm text-destructive">{errors.root.message}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                reset()
+                onClose()
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Creating…' : 'Create user'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export function UsersPage() {
+  const [showModal, setShowModal] = useState(false)
+  const queryClient = useQueryClient()
+
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ['users'],
     queryFn: fetchUsers,
@@ -48,7 +194,10 @@ export function UsersPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Users</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
+          <Button onClick={() => setShowModal(true)}>Create user</Button>
+        </div>
 
         <Card>
           <CardHeader>
@@ -118,6 +267,15 @@ export function UsersPage() {
           </CardContent>
         </Card>
       </main>
+
+      <CreateUserModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        onCreated={() => {
+          setShowModal(false)
+          queryClient.invalidateQueries({ queryKey: ['users'] })
+        }}
+      />
     </div>
   )
 }

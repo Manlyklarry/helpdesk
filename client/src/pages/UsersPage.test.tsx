@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import axios from 'axios'
 import { UsersPage } from './UsersPage'
 
-// Mock the auth client so Navbar renders without a real session
 vi.mock('../lib/auth-client', () => ({
   authClient: {
     useSession: vi.fn().mockReturnValue({
@@ -65,14 +64,11 @@ describe('UsersPage', () => {
     vi.spyOn(axios, 'get').mockReturnValue(new Promise(() => {}))
     renderPage()
 
-    // Column headers remain visible during load
     expect(screen.getByText('Name')).toBeInTheDocument()
     expect(screen.getByText('Email')).toBeInTheDocument()
 
-    // Real user data must NOT be present yet
     expect(screen.queryByText('Alice Admin')).not.toBeInTheDocument()
 
-    // 5 skeleton rows are rendered (each has 4 skeleton cells)
     const skeletonCells = document.querySelectorAll('[data-slot="skeleton"]')
     expect(skeletonCells).toHaveLength(20) // 5 rows × 4 cells
   })
@@ -160,6 +156,125 @@ describe('UsersPage', () => {
     renderPage()
     await waitFor(() =>
       expect(screen.getByText('Forbidden')).toBeInTheDocument(),
+    )
+  })
+
+  // ---------------------------------------------------------------------------
+  // Create user button
+  // ---------------------------------------------------------------------------
+
+  it('renders a "Create user" button', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Create user' })).toBeInTheDocument()
+  })
+
+  it('opens the create user modal when the button is clicked', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create user' }))
+
+    expect(screen.getByRole('heading', { name: 'Create user' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+  })
+
+  it('closes the modal when Cancel is clicked', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create user' }))
+    expect(screen.getByRole('heading', { name: 'Create user' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('heading', { name: 'Create user' })).not.toBeInTheDocument()
+  })
+
+  it('closes the modal when the backdrop is clicked', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create user' }))
+    expect(screen.getByRole('heading', { name: 'Create user' })).toBeInTheDocument()
+
+    // The backdrop is the first child of the modal container (absolute inset-0)
+    const backdrop = document.querySelector('.fixed.inset-0 > .absolute.inset-0')!
+    fireEvent.click(backdrop)
+    expect(screen.queryByRole('heading', { name: 'Create user' })).not.toBeInTheDocument()
+  })
+
+  it('shows validation errors when submitting an empty form', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create user' }))
+
+    fireEvent.submit(document.querySelector('.fixed form')!)
+
+    await waitFor(() =>
+      expect(screen.getByText('Name must be at least 3 characters')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('Enter a valid email address')).toBeInTheDocument()
+    expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
+  })
+
+  it('submits the form and refreshes the user list on success', async () => {
+    const newUser = {
+      id: '3',
+      name: 'Carol New',
+      email: 'carol@test.com',
+      role: 'agent' as const,
+      createdAt: '2024-03-01T00:00:00.000Z',
+    }
+    vi.spyOn(axios, 'post').mockResolvedValue({ data: newUser })
+    const getSpy = vi.spyOn(axios, 'get').mockResolvedValue({ data: [...MOCK_USERS, newUser] })
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create user' }))
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Carol New' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'carol@test.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'securepass' } })
+
+    fireEvent.submit(document.querySelector('.fixed form')!)
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Create user' })).not.toBeInTheDocument(),
+    )
+
+    // query was invalidated → getSpy called again
+    expect(getSpy).toHaveBeenCalledTimes(2)
+
+    await waitFor(() => expect(screen.getByText('Carol New')).toBeInTheDocument())
+  })
+
+  it('shows a server error when the create request fails', async () => {
+    vi.spyOn(axios, 'post').mockRejectedValue(
+      Object.assign(new Error('Conflict'), {
+        isAxiosError: true,
+        response: { data: { error: 'A user with that email already exists' } },
+      }),
+    )
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create user' }))
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Alice Admin' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alice@test.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'securepass' } })
+
+    fireEvent.submit(document.querySelector('.fixed form')!)
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('A user with that email already exists'),
+      ).toBeInTheDocument(),
     )
   })
 })
