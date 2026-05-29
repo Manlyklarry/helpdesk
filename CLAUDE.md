@@ -213,6 +213,78 @@ Always use the `Skeleton` component (`client/src/components/ui/skeleton.tsx`) fo
 - Use `isLoading` from `useQuery` to gate the skeleton; show the real content once `isLoading` is false
 - **Note:** the shadcn CLI does not support the `base-nova` style — write new UI primitives manually following the pattern in `skeleton.tsx` (import `cn` from `@/lib/utils`, export a single named function component)
 
+## Component & Unit Tests
+
+### Stack
+- **Runner:** Vitest v4 (configured in `client/vite.config.ts` — `globals: true`, `environment: jsdom`)
+- **Rendering:** `@testing-library/react`
+- **Matchers:** `@testing-library/jest-dom` (extended in `client/src/test/setup.ts`)
+- **Test files:** co-located with the component, e.g. `src/pages/UsersPage.test.tsx`
+
+### Running tests
+```bash
+bun run test          # run once (from repo root or client/)
+bun run test:watch    # watch mode
+```
+
+### Writing tests
+
+**Wrap every render** in `MemoryRouter` (for `Link`/`useNavigate`) and a fresh `QueryClient`:
+```tsx
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <ComponentUnderTest />
+      </QueryClientProvider>
+    </MemoryRouter>,
+  )
+}
+```
+
+**Mock `../lib/auth-client`** whenever the component tree includes `Navbar` (which calls `authClient.useSession()`):
+```ts
+vi.mock('../lib/auth-client', () => ({
+  authClient: {
+    useSession: vi.fn().mockReturnValue({
+      data: { user: { id: '1', name: 'Admin', email: 'admin@test.com', role: 'admin' } },
+      isPending: false,
+    }),
+    signOut: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+```
+
+**Mock axios calls** with `vi.spyOn` — never hit the real network:
+```ts
+beforeEach(() => {
+  vi.spyOn(axios, 'get').mockResolvedValue({ data: mockData })
+})
+afterEach(() => { vi.restoreAllMocks() })
+```
+
+**Test the loading skeleton** by making the promise never resolve:
+```ts
+vi.spyOn(axios, 'get').mockReturnValue(new Promise(() => {}))
+```
+
+**Simulate axios error with a server message** using the `isAxiosError` property:
+```ts
+const err = Object.assign(new Error('Forbidden'), {
+  isAxiosError: true,
+  response: { data: { error: 'Forbidden' } },
+})
+vi.spyOn(axios, 'get').mockRejectedValue(err)
+```
+
+**What to cover per page/component:**
+- Loading skeleton is shown; real data is absent
+- Data renders correctly (names, emails, dates, badges)
+- Empty state
+- Error state (generic + server message)
+- Any role/permission-dependent UI differences
+
 ## Key Conventions
 
 - All API routes are prefixed `/api/`

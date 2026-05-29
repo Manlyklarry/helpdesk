@@ -4,6 +4,8 @@
   "workspaces": ["client", "server"],
   "scripts": {
     "dev": "bun dev.ts",
+    "test": "bun --cwd=client run test",
+    "test:watch": "bun --cwd=client run test:watch",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:db:setup": "bun e2e/run-setup.ts"
