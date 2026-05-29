@@ -5,12 +5,21 @@ metadata:
   type: project
 ---
 
-## Seeded admin account
+## Seeded accounts
+### Admin
 - Email: `admin@test.local` (from `SEED_ADMIN_EMAIL` in `server/.env.test`)
 - Password: `TestAdmin_Pass_456!` (from `SEED_ADMIN_PASSWORD` in `server/.env.test`)
 - Role: `admin`
-- Sign-up is disabled — this is the only pre-seeded account
-- Created by `bun run seed` in `server/` (called by `global-setup.ts`)
+- Session state saved to `playwright/.auth/admin.json` by `auth.setup.ts`
+
+### Agent
+- Email: `agent@test.local` (from `SEED_AGENT_EMAIL` in `server/.env.test`)
+- Password: `TestAgent_Pass_456!` (from `SEED_AGENT_PASSWORD` in `server/.env.test`)
+- Role: `agent`
+- No storageState file — sign in inline when needed
+
+Sign-up is disabled in production auth; accounts are seeded by `server/prisma/seed.ts`.
+The seed **deletes and recreates** both accounts on every run (upsert-by-delete pattern) so credentials always match `.env.test` even if the DB was previously seeded with different values.
 
 ## auth.setup.ts
 Location: `e2e/auth.setup.ts`

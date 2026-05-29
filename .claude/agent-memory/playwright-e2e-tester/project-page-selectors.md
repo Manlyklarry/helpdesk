@@ -39,6 +39,16 @@ metadata:
 | Element | Locator |
 |---|---|
 | Users heading | `page.getByRole('heading', { name: 'Users' })` |
+| Card title | `page.getByText('All users')` |
+| Column header: Name | `page.getByText('Name', { exact: false })` — `<th>` is not a role |
+| Column header: Email | `page.getByText('Email', { exact: false })` |
+| Column header: Role | `page.getByText('Role', { exact: false })` |
+| Column header: Joined | `page.getByText('Joined', { exact: false })` |
+| User row by email | `page.getByRole('cell', { name: email })` |
+| Admin role badge | `page.getByRole('row').filter({ hasText: adminEmail }).locator('span').filter({ hasText: 'admin' })` — has class `bg-purple-50` |
+| Agent role badge | `page.getByRole('row').filter({ hasText: agentEmail }).locator('span').filter({ hasText: 'agent' })` — has class `bg-gray-100` |
+| Loading state | `page.getByText('Loading…')` — disappears once data loads |
+| Empty state | `page.getByRole('cell', { name: 'No users found' })` |
 
 ## ProtectedRoute loading state
 

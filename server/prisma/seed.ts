@@ -10,6 +10,8 @@ if (process.env.NODE_ENV === 'production') {
 
 const email = process.env.SEED_ADMIN_EMAIL
 const password = process.env.SEED_ADMIN_PASSWORD
+const agentEmail = process.env.SEED_AGENT_EMAIL
+const agentPassword = process.env.SEED_AGENT_PASSWORD
 
 if (!email || !password) {
   console.error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set')
@@ -23,22 +25,44 @@ const seedAuth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
 })
 
-async function seed(adminEmail: string, adminPassword: string) {
-  const existing = await prisma.user.findUnique({ where: { email: adminEmail } })
+/**
+ * Upsert a user: delete any existing record (cascades to sessions/accounts)
+ * then create a fresh one with the provided password and role. This ensures
+ * the test credentials in .env.test always match what is in the DB, even if
+ * the DB was seeded by a previous run with different credentials.
+ */
+async function upsertUser(
+  userEmail: string,
+  userPassword: string,
+  name: string,
+  role: 'admin' | 'agent',
+) {
+  const existing = await prisma.user.findUnique({ where: { email: userEmail } })
 
-  if (!existing) {
-    await seedAuth.api.signUpEmail({
-      body: { email: adminEmail, password: adminPassword, name: 'Admin' },
-    })
-    console.log(`Admin user created: ${adminEmail}`)
+  if (existing) {
+    // Cascade deletes sessions and accounts (see schema onDelete: Cascade)
+    await prisma.user.delete({ where: { email: userEmail } })
   }
 
-  await prisma.user.update({
-    where: { email: adminEmail },
-    data: { role: 'admin' },
+  await seedAuth.api.signUpEmail({
+    body: { email: userEmail, password: userPassword, name },
   })
 
-  console.log(`Role set to admin for: ${adminEmail}`)
+  await prisma.user.update({
+    where: { email: userEmail },
+    data: { role },
+  })
+
+  console.log(`${role} user seeded: ${userEmail}`)
+}
+
+async function seed(adminEmail: string, adminPassword: string) {
+  await upsertUser(adminEmail, adminPassword, 'Admin', 'admin')
+
+  // Seed agent user if credentials are provided
+  if (agentEmail && agentPassword) {
+    await upsertUser(agentEmail, agentPassword, 'Agent', 'agent')
+  }
 }
 
 seed(email, password)
