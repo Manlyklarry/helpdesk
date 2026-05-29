@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import axios from 'axios'
+import { useQuery } from '@tanstack/react-query'
 import { Navbar } from '../components/Navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type User = {
   id: string
@@ -8,6 +10,11 @@ type User = {
   email: string
   role: 'admin' | 'agent'
   createdAt: string
+}
+
+async function fetchUsers(): Promise<User[]> {
+  const res = await axios.get<User[]>('/api/users', { withCredentials: true })
+  return res.data
 }
 
 function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
@@ -25,20 +32,17 @@ function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
 }
 
 export function UsersPage() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: users = [], isLoading, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+  })
 
-  useEffect(() => {
-    fetch('/api/users', { credentials: 'include' })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load users')
-        return res.json() as Promise<User[]>
-      })
-      .then(setUsers)
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
+  const errorMessage =
+    axios.isAxiosError(error) && error.response?.data?.error
+      ? String(error.response.data.error)
+      : error
+        ? 'Failed to load users'
+        : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,13 +55,33 @@ export function UsersPage() {
             <CardTitle>All users</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {loading && (
-              <p className="px-6 py-8 text-sm text-gray-500">Loading…</p>
+            {isLoading && (
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50/60">
+                  <tr>
+                    {['Name', 'Email', 'Role', 'Joined'].map((col) => (
+                      <th key={col} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-28" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-44" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-            {error && (
-              <p className="px-6 py-8 text-sm text-destructive">{error}</p>
+            {errorMessage && (
+              <p className="px-6 py-8 text-sm text-destructive">{errorMessage}</p>
             )}
-            {!loading && !error && (
+            {!isLoading && !errorMessage && (
               <table className="w-full text-sm">
                 <thead className="border-b border-gray-200 bg-gray-50/60">
                   <tr>

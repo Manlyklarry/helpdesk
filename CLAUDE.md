@@ -16,6 +16,8 @@ See `project-scope.md` for full feature list and `implementation-plan.md` for th
 | Styling    | Tailwind CSS v4 + shadcn/ui     |
 | Database   | PostgreSQL + Prisma             |
 | Auth       | Better Auth (email/password, database sessions via PostgreSQL) |
+| HTTP client | Axios (client-side API calls)  |
+| Server state | TanStack Query v5 (useQuery, useMutation) |
 | AI         | Anthropic Claude API            |
 | Email      | Resend (inbound webhook + outbound) |
 
@@ -191,6 +193,25 @@ $env:DATABASE_URL="..."; bun server/prisma/seed.ts
 - Add new components: `cd client && npx shadcn@latest add <component>`
 - **Known issue:** the CLI places files in `client/@/components/ui/` (literal `@` dir) because the root `client/tsconfig.json` has no `paths`. After running `add`, move files from `client/@/components/ui/` → `client/src/components/ui/` and delete `client/@/`
 - `@base-ui/react` is required by the `base-nova` Button and Input — it is already installed
+
+## Data Fetching
+
+All client-side API calls use **Axios** + **TanStack Query v5**. Never use `fetch` directly in components.
+
+- Use `axios.get<T>`, `axios.post<T>`, etc. with `{ withCredentials: true }` on every request so the session cookie is sent
+- Wrap every server-state read in `useQuery({ queryKey: [...], queryFn })` — never use `useEffect` + `useState` for data fetching
+- Use `useMutation` for writes (POST / PATCH / DELETE); call `queryClient.invalidateQueries` in `onSuccess` to keep the cache fresh
+- The `QueryClientProvider` is mounted in `client/src/main.tsx` — do not add additional providers
+- Extract axios error messages with `axios.isAxiosError(err) && err.response?.data?.error`
+
+## Loading States
+
+Always use the `Skeleton` component (`client/src/components/ui/skeleton.tsx`) for loading states — never use spinner text like "Loading…".
+
+- Mirror the real layout: render a skeleton table during a table load, skeleton cards during a card load, etc. so there is no layout shift when data arrives
+- Size skeleton elements to approximate the real content (`h-4 w-28` for a name, `h-4 w-44` for an email, `rounded-full` for a badge pill)
+- Use `isLoading` from `useQuery` to gate the skeleton; show the real content once `isLoading` is false
+- **Note:** the shadcn CLI does not support the `base-nova` style — write new UI primitives manually following the pattern in `skeleton.tsx` (import `cn` from `@/lib/utils`, export a single named function component)
 
 ## Key Conventions
 
