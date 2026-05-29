@@ -33,7 +33,9 @@ const signInLimiter = rateLimit({
   message: { error: 'Too many login attempts. Try again in 15 minutes.' },
 })
 
-app.use('/api/auth/sign-in', signInLimiter)
+if (!process.env.DISABLE_RATE_LIMIT) {
+  app.use('/api/auth/sign-in', signInLimiter)
+}
 
 // Auth handler must be mounted before express.json()
 app.all('/api/auth/*splat', toNodeHandler(auth))
