@@ -9,20 +9,7 @@
  */
 
 import { test, expect } from '@playwright/test'
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Navigate to the login page and wait for the submit button to be visible. */
-async function gotoLogin(page: import('@playwright/test').Page) {
-  await page.goto('/login')
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+import { gotoLogin, loginAsAdmin } from './helpers/auth'
 
 test.describe('Login page', () => {
   test.beforeEach(async ({ page }) => {
@@ -236,13 +223,8 @@ test.describe('Login page', () => {
 
   test('authenticated user visiting /login can still see the login page', async ({
     page,
-    context,
   }) => {
-    // Log in first to get a real session
-    await page.getByLabel('Email').fill(process.env.SEED_ADMIN_EMAIL!)
-    await page.getByLabel('Password').fill(process.env.SEED_ADMIN_PASSWORD!)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/')
+    await loginAsAdmin(page)
 
     // Navigate directly to /login
     await page.goto('/login')

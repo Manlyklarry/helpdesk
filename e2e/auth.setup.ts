@@ -9,6 +9,7 @@
 
 import { test as setup, expect } from '@playwright/test'
 import path from 'path'
+import { loginAsAdmin } from './helpers/auth'
 
 export const ADMIN_AUTH_FILE = path.join(
   __dirname,
@@ -16,30 +17,17 @@ export const ADMIN_AUTH_FILE = path.join(
 )
 
 setup('authenticate as admin', async ({ page }) => {
-  const email = process.env.SEED_ADMIN_EMAIL
-  const password = process.env.SEED_ADMIN_PASSWORD
-
-  if (!email || !password) {
+  if (!process.env.SEED_ADMIN_EMAIL || !process.env.SEED_ADMIN_PASSWORD) {
     throw new Error(
       'SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set. ' +
         'These are read from server/.env.test by global-setup.ts.',
     )
   }
 
-  await page.goto('/login')
+  await loginAsAdmin(page)
 
-  // Wait for the login form to be ready before interacting
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
-
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-
-  // Successful login navigates to the home page (Dashboard heading)
-  await expect(page).toHaveURL('/')
-  await expect(
-    page.getByRole('heading', { name: 'Dashboard' }),
-  ).toBeVisible()
+  // Extra verification that the Dashboard rendered (not just that the URL changed)
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
 
   // Persist the browser's cookies + localStorage so dependent projects can
   // restore the session without logging in again.
