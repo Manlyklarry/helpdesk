@@ -20,6 +20,7 @@ See `project-scope.md` for full feature list and `implementation-plan.md` for th
 | Server state | TanStack Query v5 (useQuery, useMutation) |
 | AI         | Anthropic Claude API            |
 | Email      | Resend (inbound webhook + outbound) |
+| Validation | Zod (client forms via react-hook-form resolver + server request bodies) |
 
 See `tech-stack.md` for rationale.
 
@@ -295,6 +296,7 @@ vi.spyOn(axios, 'get').mockRejectedValue(err)
 - Prisma v7 uses `prisma.config.ts` for the datasource URL — `url` is not in `schema.prisma`
 - Prisma CLI must be run with `DATABASE_URL` in env: `$env:DATABASE_URL=...; .\node_modules\.bin\prisma migrate dev`
 - Email threading uses `Message-ID` / `In-Reply-To` headers
+- **Validation with Zod:** use Zod for all request body validation on the server (`zod` is in `server/package.json`). Define a schema per route, call `schema.safeParse(req.body)`, and return `res.status(400).json({ error: issues[0].message })` on failure. On the client, use the same Zod schema as the react-hook-form resolver (inline resolver pattern from `LoginPage.tsx` — avoids Vite module-identity issues with `instanceof`).
 
 ## Using Context7 for Documentation
 
