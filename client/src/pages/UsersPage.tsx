@@ -39,9 +39,9 @@ function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
 }
 
 const createUserSchema = z.object({
-  name: z.string().min(3, 'Name must be at least 3 characters'),
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters').refine((v) => !/\s/.test(v), 'Password must not contain spaces'),
+  name: z.string().min(3, { error: 'Name must be at least 3 characters' }),
+  email: z.string().email({ error: 'Enter a valid email address' }),
+  password: z.string().min(8, { error: 'Password must be at least 8 characters' }).refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' }),
 })
 
 type CreateUserValues = z.infer<typeof createUserSchema>
