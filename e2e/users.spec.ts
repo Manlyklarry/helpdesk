@@ -37,13 +37,15 @@ test.describe('Admin access to /users', () => {
 
   test('table has the expected column headers', async ({ page }) => {
     await page.goto('/users')
+    // Wait for the fetch to complete so the table is in the DOM
+    await expect(page.getByText('Loading…')).not.toBeVisible()
 
-    // All four column headers should be present (case-insensitive match via
-    // getByRole is not available on <th>, so use getByText with exact:false)
-    await expect(page.getByText('Name', { exact: false })).toBeVisible()
-    await expect(page.getByText('Email', { exact: false })).toBeVisible()
-    await expect(page.getByText('Role', { exact: false })).toBeVisible()
-    await expect(page.getByText('Joined', { exact: false })).toBeVisible()
+    // <th> elements have the columnheader role; use a regex for case-insensitive
+    // matching since Tailwind's `uppercase` class makes Playwright see "NAME" etc.
+    await expect(page.getByRole('columnheader', { name: /name/i })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /email/i })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /role/i })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /joined/i })).toBeVisible()
   })
 
   test('seeded admin user row is visible with the correct email', async ({
