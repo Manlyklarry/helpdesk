@@ -5,3 +5,4 @@
 - [Page Selectors](project-page-selectors.md) — confirmed locators for LoginPage, Navbar, HomePage, UsersPage
 - [Aria-Invalid Behaviour](project-aria-invalid.md) — how shadcn Input exposes aria-invalid and when it resets
 - [Server Reuse Gotcha](feedback-server-reuse-gotcha.md) — reuseExistingServer causes "Invalid email or password" when dev server is on test port
+- [Destructive Test Ordering](feedback-destructive-test-ordering.md) — Delete tests must run last; access-control tests using seeded data must precede them

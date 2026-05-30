@@ -40,15 +40,49 @@ metadata:
 |---|---|
 | Users heading | `page.getByRole('heading', { name: 'Users' })` |
 | Card title | `page.getByText('All users')` |
-| Column header: Name | `page.getByText('Name', { exact: false })` — `<th>` is not a role |
-| Column header: Email | `page.getByText('Email', { exact: false })` |
-| Column header: Role | `page.getByText('Role', { exact: false })` |
-| Column header: Joined | `page.getByText('Joined', { exact: false })` |
+| Column header: Name | `page.getByRole('columnheader', { name: /name/i })` — `<th>` has columnheader role |
+| Column header: Email | `page.getByRole('columnheader', { name: /email/i })` |
+| Column header: Role | `page.getByRole('columnheader', { name: /role/i })` |
+| Column header: Joined | `page.getByRole('columnheader', { name: /joined/i })` |
 | User row by email | `page.getByRole('cell', { name: email })` |
 | Admin role badge | `page.getByRole('row').filter({ hasText: adminEmail }).locator('span').filter({ hasText: 'admin' })` — has class `bg-purple-50` |
 | Agent role badge | `page.getByRole('row').filter({ hasText: agentEmail }).locator('span').filter({ hasText: 'agent' })` — has class `bg-gray-100` |
-| Loading state | `page.getByText('Loading…')` — disappears once data loads |
+| Create user button | `page.getByRole('button', { name: 'Create user' })` |
+| Edit button (per row) | `agentRow.getByRole('button', { name: /edit/i })` — aria-label is "Edit <name>" |
+| Delete button (per row) | `agentRow.getByRole('button', { name: /delete/i })` — only present on agent rows |
+| Loading state | skeleton rows visible while `isLoading` — no text to assert against |
 | Empty state | `page.getByRole('cell', { name: 'No users found' })` |
+
+## UsersPage — Create modal
+
+| Element | Locator |
+|---|---|
+| Modal heading | `page.getByRole('heading', { name: 'Create user' })` |
+| Name input | `page.locator('#new-name')` |
+| Email input | `page.locator('#new-email')` |
+| Password input | `page.locator('#new-password')` |
+| Submit button | `page.getByRole('button', { name: 'Create user' })` (same text as the modal heading, but distinct button) |
+| Cancel button | `page.getByRole('button', { name: 'Cancel' })` |
+
+## UsersPage — Edit modal
+
+| Element | Locator |
+|---|---|
+| Modal heading | `page.getByRole('heading', { name: 'Edit user' })` |
+| Name input | `page.locator('#edit-name')` |
+| Email input | `page.locator('#edit-email')` |
+| Role select | `page.locator('#edit-role')` |
+| Password input | `page.locator('#edit-password')` |
+| Submit button | `page.getByRole('button', { name: 'Save changes' })` |
+| Cancel button | `page.getByRole('button', { name: 'Cancel' })` |
+
+## UsersPage — Delete confirmation modal
+
+| Element | Locator |
+|---|---|
+| Modal heading | `page.getByRole('heading', { name: 'Delete user' })` |
+| Confirm button | `page.getByRole('button', { name: 'Delete' })` — variant="destructive" |
+| Cancel button | `page.getByRole('button', { name: 'Cancel' })` |
 
 ## ProtectedRoute loading state
 
