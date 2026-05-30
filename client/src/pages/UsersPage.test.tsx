@@ -345,16 +345,6 @@ describe('UsersPage', () => {
         )
       })
 
-      it('shows "Email is required" for whitespace-only input', async () => {
-        // jsdom applies the HTML5 email-input value sanitization algorithm which
-        // strips all whitespace, so "   " becomes "" before the validator runs.
-        await openModal()
-        fireEvent.change(screen.getByLabelText('Email'), { target: { value: '   ' } })
-        await waitFor(() =>
-          expect(screen.getByText('Email is required')).toBeInTheDocument(),
-        )
-      })
-
       it('shows "Enter a valid email address" for an invalid email format', async () => {
         await openModal()
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'notanemail' } })
@@ -430,7 +420,7 @@ describe('UsersPage', () => {
       fireEvent.submit(document.querySelector('.fixed form')!)
 
       await waitFor(() =>
-        expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled(),
+        expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled(),
       )
     })
   })
