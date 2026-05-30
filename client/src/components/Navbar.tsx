@@ -1,5 +1,6 @@
 import { useNavigate, Link } from 'react-router'
 import { authClient } from '../lib/auth-client'
+import { Button } from '@/components/ui/button'
 
 export function Navbar() {
   const { data: session } = authClient.useSession()
@@ -25,15 +26,10 @@ export function Navbar() {
 
           {session && (
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {session.user.name}
-              </span>
-              <button
-                onClick={handleSignOut}
-                className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
-              >
+              <span className="text-sm text-gray-600">{session.user.name}</span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign out
-              </button>
+              </Button>
             </div>
           )}
         </div>

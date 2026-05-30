@@ -4,7 +4,13 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { UsersPage } from './pages/UsersPage'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({
+  children,
+  adminOnly = false,
+}: {
+  children: React.ReactNode
+  adminOnly?: boolean
+}) {
   const { data: session, isPending } = authClient.useSession()
 
   if (isPending) {
@@ -15,31 +21,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!session) {
-    return <Navigate to="/login" replace />
-  }
-
-  return <>{children}</>
-}
-
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { data: session, isPending } = authClient.useSession()
-
-  if (isPending) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <span className="text-sm text-gray-500">Loading…</span>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (session.user.role !== 'admin') {
-    return <Navigate to="/" replace />
-  }
+  if (!session) return <Navigate to="/login" replace />
+  if (adminOnly && session.user.role !== 'admin') return <Navigate to="/" replace />
 
   return <>{children}</>
 }
@@ -60,9 +43,9 @@ function App() {
         <Route
           path="/users"
           element={
-            <AdminRoute>
+            <ProtectedRoute adminOnly>
               <UsersPage />
-            </AdminRoute>
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
