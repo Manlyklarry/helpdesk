@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Pencil } from 'lucide-react'
+import { Loader2, Pencil, Trash2 } from 'lucide-react'
 
 type User = {
   id: string
@@ -398,12 +398,91 @@ function EditUserModal({
 }
 
 // ---------------------------------------------------------------------------
+// Delete user
+// ---------------------------------------------------------------------------
+
+function DeleteConfirmModal({
+  user,
+  onClose,
+  onDeleted,
+}: {
+  user: User
+  onClose: () => void
+  onDeleted: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      axios.delete(`/api/users/${user.id}`, { withCredentials: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      onDeleted()
+    },
+    onError: (err) => {
+      const msg =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? String(err.response.data.error)
+          : 'Failed to delete user'
+      setServerError(msg)
+    },
+  })
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+        <h2 className="mb-2 text-base font-semibold text-gray-900">Delete user</h2>
+        <p className="mb-6 text-sm text-gray-600">
+          Are you sure you want to delete <span className="font-medium text-gray-900">{user.name}</span>? This action cannot be undone.
+        </p>
+
+        {serverError && (
+          <p className="mb-4 text-sm text-destructive">{serverError}</p>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export function UsersPage() {
   const [showModal, setShowModal] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
+  const [deleteUser, setDeleteUser] = useState<User | null>(null)
   const queryClient = useQueryClient()
 
   const { data: users = [], isLoading, error } = useQuery({
@@ -489,14 +568,27 @@ export function UsersPage() {
                           {new Date(user.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditUser(user)}
-                            aria-label={`Edit ${user.name}`}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditUser(user)}
+                              aria-label={`Edit ${user.name}`}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            {user.role !== 'admin' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteUser(user)}
+                                aria-label={`Delete ${user.name}`}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -525,6 +617,14 @@ export function UsersPage() {
             setEditUser(null)
             queryClient.invalidateQueries({ queryKey: ['users'] })
           }}
+        />
+      )}
+
+      {deleteUser && (
+        <DeleteConfirmModal
+          user={deleteUser}
+          onClose={() => setDeleteUser(null)}
+          onDeleted={() => setDeleteUser(null)}
         />
       )}
     </div>

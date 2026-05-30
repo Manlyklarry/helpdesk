@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { prisma } from '../lib/db.js'
-import { createUser, updateUser } from '../lib/user-manager.js'
+import { createUser, updateUser, deleteUser } from '../lib/user-manager.js'
 
 const router = Router()
 
@@ -14,11 +14,17 @@ const createUserSchema = z.object({
 })
 
 router.get('/', requireAdmin, async (_req, res) => {
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
-    orderBy: { createdAt: 'asc' },
-  })
-  res.json(users)
+  try {
+    const users = await prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    res.json(users)
+  } catch (err) {
+    console.error('Failed to fetch users:', err)
+    res.status(500).json({ error: 'Failed to load users' })
+  }
 })
 
 router.post('/', requireAdmin, async (req, res) => {
@@ -83,6 +89,26 @@ router.patch('/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Failed to update user:', err)
     return res.status(500).json({ error: 'Failed to update user' })
+  }
+})
+
+router.delete('/:id', requireAdmin, async (req, res) => {
+  const id = String(req.params.id)
+
+  const existing = await prisma.user.findUnique({ where: { id } })
+  if (!existing || existing.deletedAt) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  if (existing.role === 'admin') {
+    return res.status(403).json({ error: 'Admin users cannot be deleted' })
+  }
+
+  try {
+    await deleteUser(id)
+    return res.json({ success: true })
+  } catch (err) {
+    console.error('Failed to delete user:', err)
+    return res.status(500).json({ error: 'Failed to delete user' })
   }
 })
 

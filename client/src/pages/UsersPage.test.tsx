@@ -424,4 +424,99 @@ describe('UsersPage', () => {
       )
     })
   })
+
+  // ---------------------------------------------------------------------------
+  // Delete user
+  // ---------------------------------------------------------------------------
+
+  describe('Delete user', () => {
+    it('does not render a delete button for admin users', async () => {
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: 'Delete Alice Admin' })).not.toBeInTheDocument()
+    })
+
+    it('renders a delete button for agent users', async () => {
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Delete Bob Agent' })).toBeInTheDocument()
+    })
+
+    it('opens the confirmation modal when the delete button is clicked', async () => {
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Bob Agent' }))
+
+      expect(screen.getByRole('heading', { name: 'Delete user' })).toBeInTheDocument()
+      // confirmation paragraph contains the user name (appears in both table and modal)
+      expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument()
+      expect(screen.getAllByText('Bob Agent').length).toBeGreaterThan(1)
+    })
+
+    it('closes the modal when Cancel is clicked without calling delete', async () => {
+      const deleteSpy = vi.spyOn(axios, 'delete')
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Bob Agent' }))
+      expect(screen.getByRole('heading', { name: 'Delete user' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByRole('heading', { name: 'Delete user' })).not.toBeInTheDocument()
+      expect(deleteSpy).not.toHaveBeenCalled()
+    })
+
+    it('closes the modal when Escape is pressed without calling delete', async () => {
+      const deleteSpy = vi.spyOn(axios, 'delete')
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Bob Agent' }))
+      expect(screen.getByRole('heading', { name: 'Delete user' })).toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      expect(screen.queryByRole('heading', { name: 'Delete user' })).not.toBeInTheDocument()
+      expect(deleteSpy).not.toHaveBeenCalled()
+    })
+
+    it('calls delete API and refreshes list on confirmation', async () => {
+      vi.spyOn(axios, 'delete').mockResolvedValue({ data: { success: true } })
+      // First call: initial load (both users); second call: after invalidation (only Alice)
+      const getSpy = vi.spyOn(axios, 'get')
+        .mockResolvedValueOnce({ data: MOCK_USERS })
+        .mockResolvedValueOnce({ data: [MOCK_USERS[0]] })
+
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Bob Agent' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'Delete user' })).not.toBeInTheDocument(),
+      )
+
+      expect(getSpy).toHaveBeenCalledTimes(2)
+    })
+
+    it('shows a server error when the delete request fails', async () => {
+      vi.spyOn(axios, 'delete').mockRejectedValue(
+        Object.assign(new Error('Forbidden'), {
+          isAxiosError: true,
+          response: { data: { error: 'Admin users cannot be deleted' } },
+        }),
+      )
+
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Bob Agent' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() =>
+        expect(screen.getByText('Admin users cannot be deleted')).toBeInTheDocument(),
+      )
+    })
+  })
 })
