@@ -426,6 +426,119 @@ describe('UsersPage', () => {
   })
 
   // ---------------------------------------------------------------------------
+  // Edit user
+  // ---------------------------------------------------------------------------
+
+  describe('Edit user', () => {
+    async function openEditModal() {
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Bob Agent')).toBeInTheDocument())
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Bob Agent' }))
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: 'Edit user' })).toBeInTheDocument(),
+      )
+    }
+
+    it('renders an edit button for every user row', async () => {
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Alice Admin')).toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Edit Alice Admin' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit Bob Agent' })).toBeInTheDocument()
+    })
+
+    it('opens the edit modal when the edit button is clicked', async () => {
+      await openEditModal()
+      expect(screen.getByRole('heading', { name: 'Edit user' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Email')).toBeInTheDocument()
+      expect(screen.getByLabelText('Role')).toBeInTheDocument()
+    })
+
+    it("pre-populates the form with the selected user's data", async () => {
+      await openEditModal()
+      expect(screen.getByLabelText('Name')).toHaveValue('Bob Agent')
+      expect(screen.getByLabelText('Email')).toHaveValue('bob@test.com')
+      expect(screen.getByLabelText('Role')).toHaveValue('agent')
+    })
+
+    it('closes the modal when Cancel is clicked', async () => {
+      await openEditModal()
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByRole('heading', { name: 'Edit user' })).not.toBeInTheDocument()
+    })
+
+    it('closes the modal when the backdrop is clicked', async () => {
+      await openEditModal()
+      const backdrop = document.querySelector('.fixed.inset-0 > .absolute.inset-0')!
+      fireEvent.click(backdrop)
+      expect(screen.queryByRole('heading', { name: 'Edit user' })).not.toBeInTheDocument()
+    })
+
+    it('closes the modal when Escape is pressed', async () => {
+      await openEditModal()
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      expect(screen.queryByRole('heading', { name: 'Edit user' })).not.toBeInTheDocument()
+    })
+
+    it('submits the form and refreshes the list on success', async () => {
+      const updated = { ...MOCK_USERS[1], name: 'Bob Updated' }
+      vi.spyOn(axios, 'patch').mockResolvedValue({ data: updated })
+      const getSpy = vi.spyOn(axios, 'get')
+        .mockResolvedValueOnce({ data: MOCK_USERS })
+        .mockResolvedValueOnce({ data: [MOCK_USERS[0], updated] })
+
+      await openEditModal()
+
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Bob Updated' } })
+      fireEvent.submit(document.querySelector('.fixed form')!)
+
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { name: 'Edit user' })).not.toBeInTheDocument(),
+      )
+      expect(getSpy).toHaveBeenCalledTimes(2)
+      await waitFor(() => expect(screen.getByText('Bob Updated')).toBeInTheDocument())
+    })
+
+    it('does not include password in the request when the password field is left blank', async () => {
+      const patchSpy = vi.spyOn(axios, 'patch').mockResolvedValue({ data: MOCK_USERS[1] })
+
+      await openEditModal()
+      fireEvent.submit(document.querySelector('.fixed form')!)
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled())
+      const body = patchSpy.mock.calls[0][1] as Record<string, unknown>
+      expect(body).not.toHaveProperty('password')
+    })
+
+    it('shows a server error when the update request fails', async () => {
+      vi.spyOn(axios, 'patch').mockRejectedValue(
+        Object.assign(new Error('Conflict'), {
+          isAxiosError: true,
+          response: { data: { error: 'A user with that email already exists' } },
+        }),
+      )
+
+      await openEditModal()
+      fireEvent.submit(document.querySelector('.fixed form')!)
+
+      await waitFor(() =>
+        expect(screen.getByText('A user with that email already exists')).toBeInTheDocument(),
+      )
+    })
+
+    it('disables the submit button while the request is in flight', async () => {
+      vi.spyOn(axios, 'patch').mockReturnValue(new Promise(() => {}))
+
+      await openEditModal()
+      fireEvent.submit(document.querySelector('.fixed form')!)
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Saving...' })).toBeDisabled(),
+      )
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   // Delete user
   // ---------------------------------------------------------------------------
 
