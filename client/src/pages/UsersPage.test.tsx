@@ -70,7 +70,7 @@ describe('UsersPage', () => {
     expect(screen.queryByText('Alice Admin')).not.toBeInTheDocument()
 
     const skeletonCells = document.querySelectorAll('[data-slot="skeleton"]')
-    expect(skeletonCells).toHaveLength(20) // 5 rows × 4 cells
+    expect(skeletonCells).toHaveLength(25) // 5 rows × 5 cells (Name, Email, Role, Joined, Actions)
   })
 
   // ---------------------------------------------------------------------------

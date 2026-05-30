@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Pencil } from 'lucide-react'
 
 type User = {
   id: string
@@ -38,6 +38,10 @@ function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
     </span>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Create user
+// ---------------------------------------------------------------------------
 
 const createUserSchema = z.object({
   name: z.string()
@@ -200,8 +204,206 @@ function CreateUserModal({
   )
 }
 
+// ---------------------------------------------------------------------------
+// Edit user
+// ---------------------------------------------------------------------------
+
+const editUserSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(1, { error: 'Name is required' })
+    .min(3, { error: 'Name must be at least 3 characters' }),
+  email: z.string()
+    .min(1, { error: 'Email is required' })
+    .email({ error: 'Enter a valid email address' }),
+  role: z.enum(['admin', 'agent']),
+  password: z.string()
+    .refine((v) => v === '' || v.length >= 8, { message: 'Password must be at least 8 characters' })
+    .refine((v) => v === '' || !/\s/.test(v), { message: 'Password must not contain spaces' }),
+})
+
+type EditUserValues = z.infer<typeof editUserSchema>
+
+const editUserResolver: Resolver<EditUserValues> = async (values) => {
+  const result = editUserSchema.safeParse(values)
+  if (result.success) return { values: result.data, errors: {} }
+  const errors: Record<string, { message: string; type: string }> = {}
+  for (const issue of result.error.issues) {
+    const key = issue.path.join('.') as keyof EditUserValues
+    if (!errors[key]) errors[key] = { message: issue.message, type: issue.code }
+  }
+  return { values: {}, errors }
+}
+
+function EditUserModal({
+  user,
+  onClose,
+  onUpdated,
+}: {
+  user: User
+  onClose: () => void
+  onUpdated: () => void
+}) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors },
+  } = useForm<EditUserValues>({
+    resolver: editUserResolver,
+    mode: 'onChange',
+    defaultValues: { name: '', email: '', role: 'agent', password: '' },
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: EditUserValues) => {
+      const body: Record<string, unknown> = {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      }
+      if (data.password) body.password = data.password
+      return axios.patch<User>(`/api/users/${user.id}`, body, { withCredentials: true })
+    },
+    onSuccess: () => {
+      reset()
+      onUpdated()
+    },
+    onError: (err) => {
+      const msg =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? String(err.response.data.error)
+          : 'Failed to update user'
+      setError('root', { message: msg })
+    },
+  })
+
+  useEffect(() => {
+    reset({ name: user.name, email: user.email, role: user.role, password: '' })
+  }, [user, reset])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Edit user</h2>
+        <form
+          onSubmit={handleSubmit((data) => mutation.mutate(data))}
+          noValidate
+          className="space-y-4"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-name">Name</Label>
+            <Input
+              id="edit-name"
+              type="text"
+              autoComplete="off"
+              placeholder="Jane Smith"
+              aria-invalid={!!errors.name}
+              {...register('name')}
+            />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-email">Email</Label>
+            <Input
+              id="edit-email"
+              type="email"
+              autoComplete="off"
+              placeholder="jane@example.com"
+              aria-invalid={!!errors.email}
+              {...register('email')}
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-role">Role</Label>
+            <select
+              id="edit-role"
+              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
+              aria-invalid={!!errors.role}
+              {...register('role')}
+            >
+              <option value="agent">Agent</option>
+              <option value="admin">Admin</option>
+            </select>
+            {errors.role && (
+              <p className="text-xs text-destructive">{errors.role.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-password">
+              Password
+              <span className="ml-1 text-xs font-normal text-gray-400">(leave blank to keep current)</span>
+            </Label>
+            <Input
+              id="edit-password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              aria-invalid={!!errors.password}
+              {...register('password')}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+
+          {errors.root && (
+            <p className="text-sm text-destructive">{errors.root.message}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                reset()
+                onClose()
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save changes'
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export function UsersPage() {
   const [showModal, setShowModal] = useState(false)
+  const [editUser, setEditUser] = useState<User | null>(null)
   const queryClient = useQueryClient()
 
   const { data: users = [], isLoading, error } = useQuery({
@@ -234,8 +436,8 @@ export function UsersPage() {
               <table className="w-full text-sm">
                 <thead className="border-b border-gray-200 bg-gray-50/60">
                   <tr>
-                    {['Name', 'Email', 'Role', 'Joined'].map((col) => (
-                      <th key={col} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                    {['Name', 'Email', 'Role', 'Joined', ''].map((col, i) => (
+                      <th key={i} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                         {col}
                       </th>
                     ))}
@@ -248,6 +450,7 @@ export function UsersPage() {
                       <td className="px-6 py-4"><Skeleton className="h-4 w-44" /></td>
                       <td className="px-6 py-4"><Skeleton className="h-5 w-14 rounded-full" /></td>
                       <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-8 w-8 rounded-md" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -264,12 +467,13 @@ export function UsersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Role</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Joined</th>
+                    <th className="px-6 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {users.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
+                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
                         No users found
                       </td>
                     </tr>
@@ -283,6 +487,16 @@ export function UsersPage() {
                         </td>
                         <td className="px-6 py-4 text-gray-500">
                           {new Date(user.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditUser(user)}
+                            aria-label={`Edit ${user.name}`}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
                         </td>
                       </tr>
                     ))
@@ -302,6 +516,17 @@ export function UsersPage() {
           queryClient.invalidateQueries({ queryKey: ['users'] })
         }}
       />
+
+      {editUser && (
+        <EditUserModal
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onUpdated={() => {
+            setEditUser(null)
+            queryClient.invalidateQueries({ queryKey: ['users'] })
+          }}
+        />
+      )}
     </div>
   )
 }

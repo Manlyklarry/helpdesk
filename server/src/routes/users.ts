@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { prisma } from '../lib/db.js'
-import { createUser } from '../lib/user-manager.js'
+import { createUser, updateUser } from '../lib/user-manager.js'
 
 const router = Router()
 
@@ -41,6 +41,48 @@ router.post('/', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Failed to create user:', err)
     return res.status(500).json({ error: 'Failed to create user' })
+  }
+})
+
+const updateUserSchema = z.object({
+  name: z.string().trim().min(3, { error: 'Name must be at least 3 characters' }),
+  email: z.string().trim().toLowerCase().email({ error: 'Invalid email address' }),
+  role: z.enum(['admin', 'agent']),
+  password: z.string().trim()
+    .min(8, { error: 'Password must be at least 8 characters' })
+    .refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' })
+    .optional(),
+})
+
+router.patch('/:id', requireAdmin, async (req, res) => {
+  const parsed = updateUserSchema.safeParse(req.body)
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? 'Invalid request'
+    return res.status(400).json({ error: message })
+  }
+
+  const { name, email, role, password } = parsed.data
+
+  const id = String(req.params.id)
+
+  const existing = await prisma.user.findUnique({ where: { id } })
+  if (!existing) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  if (email !== existing.email) {
+    const emailTaken = await prisma.user.findUnique({ where: { email } })
+    if (emailTaken) {
+      return res.status(409).json({ error: 'A user with that email already exists' })
+    }
+  }
+
+  try {
+    const user = await updateUser(id, { name, email, role, password })
+    return res.json(user)
+  } catch (err) {
+    console.error('Failed to update user:', err)
+    return res.status(500).json({ error: 'Failed to update user' })
   }
 })
 
