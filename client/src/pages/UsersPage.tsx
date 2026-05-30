@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -39,9 +39,17 @@ function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
 }
 
 const createUserSchema = z.object({
-  name: z.string().min(3, { error: 'Name must be at least 3 characters' }),
-  email: z.string().email({ error: 'Enter a valid email address' }),
-  password: z.string().min(8, { error: 'Password must be at least 8 characters' }).refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' }),
+  name: z.string()
+    .trim()
+    .min(1, { error: 'Name is required' })
+    .min(3, { error: 'Name must be at least 3 characters' }),
+  email: z.string()
+    .min(1, { error: 'Email is required' })
+    .email({ error: 'Enter a valid email address' }),
+  password: z.string()
+    .min(1, { error: 'Password is required' })
+    .min(8, { error: 'Password must be at least 8 characters' })
+    .refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' }),
 })
 
 type CreateUserValues = z.infer<typeof createUserSchema>
@@ -74,7 +82,7 @@ function CreateUserModal({
     formState: { errors },
   } = useForm<CreateUserValues>({
     resolver: createUserResolver,
-    mode: 'onTouched',
+    mode: 'onChange',
   })
 
   const mutation = useMutation({
@@ -93,6 +101,15 @@ function CreateUserModal({
     },
   })
 
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
   return (
@@ -102,6 +119,7 @@ function CreateUserModal({
         <h2 className="mb-4 text-base font-semibold text-gray-900">Create user</h2>
         <form
           onSubmit={handleSubmit((data) => mutation.mutate(data))}
+          noValidate
           className="space-y-4"
         >
           <div className="space-y-1.5">
