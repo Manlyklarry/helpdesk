@@ -1,0 +1,27 @@
+export const TicketStatus = {
+  open: 'open',
+  resolved: 'resolved',
+  closed: 'closed',
+} as const
+
+export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus]
+
+export const TicketCategory = {
+  general: 'general',
+  technical: 'technical',
+  refund: 'refund',
+} as const
+
+export type TicketCategory = (typeof TicketCategory)[keyof typeof TicketCategory]
+
+export type Ticket = {
+  id: number
+  subject: string
+  status: TicketStatus
+  category: TicketCategory | null
+  fromEmail: string
+  fromName: string
+  createdAt: string
+  updatedAt: string
+  _count?: { messages: number }
+}

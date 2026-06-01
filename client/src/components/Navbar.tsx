@@ -17,6 +17,9 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="text-lg font-semibold text-gray-900">Helpdesk</Link>
+            <Link to="/tickets" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+              Tickets
+            </Link>
             {session?.user.role === 'admin' && (
               <Link to="/users" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                 Users
