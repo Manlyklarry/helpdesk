@@ -33,3 +33,20 @@ export type PaginatedTickets = {
   pageSize: number
   totalPages: number
 }
+
+export type TicketMessage = {
+  id: number
+  ticketId: number
+  messageId: string
+  direction: 'inbound' | 'outbound'
+  fromEmail: string
+  fromName: string
+  body: string
+  htmlBody: string | null
+  createdAt: string
+}
+
+export type TicketDetail = Ticket & {
+  assignedAgent: { id: string; name: string; email: string } | null
+  messages: TicketMessage[]
+}

@@ -75,6 +75,7 @@ router.get('/:id', async (req, res) => {
       where: { id },
       include: {
         messages: { orderBy: { createdAt: 'asc' } },
+        assignedAgent: { select: { id: true, name: true, email: true } },
       },
     })
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
@@ -82,6 +83,70 @@ router.get('/:id', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch ticket:', err)
     return res.status(500).json({ error: 'Failed to load ticket' })
+  }
+})
+
+const assignSchema = z.object({
+  agentId: z.string().nullable(),
+})
+
+router.patch('/:id/assign', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const parsed = assignSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid agent ID') })
+
+  try {
+    const existing = await prisma.ticket.findUnique({ where: { id } })
+    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+
+    if (parsed.data.agentId !== null) {
+      const agent = await prisma.user.findUnique({ where: { id: parsed.data.agentId, deletedAt: null } })
+      if (!agent) return res.status(404).json({ error: 'Agent not found' })
+    }
+
+    const ticket = await prisma.ticket.update({
+      where: { id },
+      data: { assignedAgentId: parsed.data.agentId },
+      select: { id: true, assignedAgent: { select: { id: true, name: true, email: true } } },
+    })
+    return res.json(ticket)
+  } catch (err) {
+    console.error('Failed to assign ticket:', err)
+    return res.status(500).json({ error: 'Failed to assign ticket' })
+  }
+})
+
+const replySchema = z.object({
+  body: z.string().trim().min(1, { message: 'Reply cannot be empty' }),
+})
+
+router.post('/:id/messages', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const parsed = replySchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid reply') })
+
+  const agent = req.user!
+
+  try {
+    const existing = await prisma.ticket.findUnique({ where: { id } })
+    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+
+    const message = await prisma.ticketMessage.create({
+      data: {
+        ticketId: id,
+        messageId: `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        direction: 'outbound',
+        fromEmail: agent.email,
+        fromName: agent.name,
+        body: parsed.data.body,
+      },
+    })
+    return res.status(201).json(message)
+  } catch (err) {
+    console.error('Failed to add reply:', err)
+    return res.status(500).json({ error: 'Failed to send reply' })
   }
 })
 

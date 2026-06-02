@@ -24,6 +24,20 @@ const updateUserSchema = z.object({
     .optional(),
 })
 
+router.get('/agents', async (_req, res) => {
+  try {
+    const agents = await prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    })
+    res.json(agents)
+  } catch (err) {
+    console.error('Failed to fetch agents:', err)
+    res.status(500).json({ error: 'Failed to load agents' })
+  }
+})
+
 router.get('/', requireAdmin, async (_req, res) => {
   try {
     const users = await prisma.user.findMany({

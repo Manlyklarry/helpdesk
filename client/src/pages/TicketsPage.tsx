@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router'
 import {
   useReactTable,
   getCoreRowModel,
@@ -132,7 +133,12 @@ const columns = [
     header: 'Subject',
     enableSorting: true,
     cell: (info) => (
-      <span className="font-medium text-gray-900 max-w-xs truncate block">{info.getValue()}</span>
+      <Link
+        to={`/tickets/${info.row.original.id}`}
+        className="font-medium text-gray-900 hover:text-blue-600 max-w-xs truncate block transition-colors"
+      >
+        {info.getValue()}
+      </Link>
     ),
   }),
   columnHelper.accessor('fromName', {

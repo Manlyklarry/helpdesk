@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { UsersPage } from './pages/UsersPage'
 import { TicketsPage } from './pages/TicketsPage'
+import { TicketDetailPage } from './pages/TicketDetailPage'
 
 function ProtectedRoute({
   children,
@@ -59,6 +60,14 @@ function App() {
           element={
             <ProtectedRoute>
               <TicketsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tickets/:id"
+          element={
+            <ProtectedRoute>
+              <TicketDetailPage />
             </ProtectedRoute>
           }
         />

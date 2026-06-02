@@ -12,17 +12,18 @@ enum Role {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean
-  image         String?
-  role          Role      @default(agent)
-  createdAt     DateTime
-  updatedAt     DateTime
-  deletedAt     DateTime?
-  sessions      Session[]
-  accounts      Account[]
+  id              String    @id
+  name            String
+  email           String    @unique
+  emailVerified   Boolean
+  image           String?
+  role            Role      @default(agent)
+  createdAt       DateTime
+  updatedAt       DateTime
+  deletedAt       DateTime?
+  sessions        Session[]
+  accounts        Account[]
+  assignedTickets Ticket[]  @relation("AssignedTickets")
 }
 
 model Session {
@@ -76,15 +77,17 @@ enum TicketCategory {
 }
 
 model Ticket {
-  id        Int            @id @default(autoincrement())
-  subject   String
-  status    TicketStatus   @default(open)
-  category  TicketCategory?
-  fromEmail String
-  fromName  String
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  messages  TicketMessage[]
+  id              Int             @id @default(autoincrement())
+  subject         String
+  status          TicketStatus    @default(open)
+  category        TicketCategory?
+  fromEmail       String
+  fromName        String
+  assignedAgentId String?
+  assignedAgent   User?           @relation("AssignedTickets", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  messages        TicketMessage[]
 }
 
 model TicketMessage {
