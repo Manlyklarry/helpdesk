@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { prisma } from '../lib/db.js'
 import { createUser, updateUser, deleteUser } from '../lib/user-manager.js'
+import { firstZodError } from '../lib/zod.js'
 
 const router = Router()
 
@@ -39,10 +40,7 @@ router.get('/', requireAdmin, async (_req, res) => {
 
 router.post('/', requireAdmin, async (req, res) => {
   const parsed = createUserSchema.safeParse(req.body)
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? 'Invalid request'
-    return res.status(400).json({ error: message })
-  }
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error) })
 
   const { name, email, password, role } = parsed.data
 
@@ -60,10 +58,7 @@ router.post('/', requireAdmin, async (req, res) => {
 
 router.patch('/:id', requireAdmin, async (req, res) => {
   const parsed = updateUserSchema.safeParse(req.body)
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? 'Invalid request'
-    return res.status(400).json({ error: message })
-  }
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error) })
 
   const { name, email, role, password } = parsed.data
   const id = String(req.params.id)

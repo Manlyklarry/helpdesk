@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash2 } from 'lucide-react'
 import { axiosError } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
 import type { User } from '@/types/user'
 import { CreateUserModal } from './users/CreateUserModal'
 import { EditUserModal } from './users/EditUserModal'
@@ -19,15 +20,9 @@ async function fetchUsers(): Promise<User[]> {
 
 function RoleBadge({ role }: { role: 'admin' | 'agent' }) {
   return (
-    <span
-      className={
-        role === 'admin'
-          ? 'inline-flex items-center rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10'
-          : 'inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10'
-      }
-    >
+    <Badge className={role === 'admin' ? 'bg-purple-50 text-purple-700 ring-purple-700/10' : 'bg-gray-100 text-gray-600 ring-gray-500/10'}>
       {role}
-    </span>
+    </Badge>
   )
 }
 

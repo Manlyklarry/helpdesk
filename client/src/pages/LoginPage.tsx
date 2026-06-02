@@ -5,7 +5,7 @@ import { authClient } from '../lib/auth-client'
 import { makeZodResolver } from '../lib/form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/FormField'
 import {
   Card,
   CardContent,
@@ -63,8 +63,7 @@ export function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+              <FormField id="email" label="Email" error={errors.email?.message}>
                 <Input
                   id="email"
                   type="email"
@@ -73,13 +72,9 @@ export function LoginPage() {
                   aria-invalid={!!errors.email}
                   {...register('email')}
                 />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email.message}</p>
-                )}
-              </div>
+              </FormField>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+              <FormField id="password" label="Password" error={errors.password?.message}>
                 <Input
                   id="password"
                   type="password"
@@ -88,10 +83,7 @@ export function LoginPage() {
                   aria-invalid={!!errors.password}
                   {...register('password')}
                 />
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password.message}</p>
-                )}
-              </div>
+              </FormField>
 
               {errors.root && (
                 <p className="text-sm text-destructive">{errors.root.message}</p>

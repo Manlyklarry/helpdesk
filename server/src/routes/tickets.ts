@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/db.js'
+import { firstZodError } from '../lib/zod.js'
 
 const router = Router()
 
@@ -9,16 +10,32 @@ const SORTABLE_FIELDS = ['createdAt', 'subject', 'fromName', 'status', 'category
 const listQuerySchema = z.object({
   sortBy: z.enum(SORTABLE_FIELDS).default('createdAt'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),
+  status: z.enum(['open', 'resolved', 'closed']).optional(),
+  category: z.enum(['general', 'technical', 'refund', 'none']).optional(),
+  search: z.string().trim().optional(),
 })
 
 router.get('/', async (req, res) => {
   const result = listQuerySchema.safeParse(req.query)
-  const { sortBy, sortDir } = result.success
+  const { sortBy, sortDir, status, category, search } = result.success
     ? result.data
-    : { sortBy: 'createdAt' as const, sortDir: 'desc' as const }
+    : { sortBy: 'createdAt' as const, sortDir: 'desc' as const, status: undefined, category: undefined, search: undefined }
+
+  const where = {
+    ...(status ? { status } : {}),
+    ...(category === 'none' ? { category: null } : category ? { category } : {}),
+    ...(search ? {
+      OR: [
+        { subject:   { contains: search, mode: 'insensitive' as const } },
+        { fromName:  { contains: search, mode: 'insensitive' as const } },
+        { fromEmail: { contains: search, mode: 'insensitive' as const } },
+      ],
+    } : {}),
+  }
 
   try {
     const tickets = await prisma.ticket.findMany({
+      where,
       select: {
         id: true,
         subject: true,
@@ -65,9 +82,7 @@ router.patch('/:id/status', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
   const parsed = statusSchema.safeParse(req.body)
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid status' })
-  }
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid status') })
 
   try {
     const existing = await prisma.ticket.findUnique({ where: { id } })
