@@ -59,9 +59,11 @@ function renderPage() {
   )
 }
 
+const MOCK_PAGE = { data: MOCK_TICKETS, total: 3, page: 1, pageSize: 10, totalPages: 1 }
+
 describe('TicketsPage', () => {
   beforeEach(() => {
-    vi.spyOn(axios, 'get').mockResolvedValue({ data: MOCK_TICKETS })
+    vi.spyOn(axios, 'get').mockResolvedValue({ data: MOCK_PAGE })
   })
 
   afterEach(() => {
@@ -196,7 +198,7 @@ describe('TicketsPage', () => {
   // ---------------------------------------------------------------------------
 
   it('shows "No tickets yet" when the API returns an empty list', async () => {
-    vi.spyOn(axios, 'get').mockResolvedValue({ data: [] })
+    vi.spyOn(axios, 'get').mockResolvedValue({ data: { data: [], total: 0, page: 1, pageSize: 10, totalPages: 0 } })
     renderPage()
     await waitFor(() =>
       expect(screen.getByText('No tickets yet')).toBeInTheDocument(),

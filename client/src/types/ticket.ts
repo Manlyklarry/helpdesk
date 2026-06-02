@@ -25,3 +25,11 @@ export type Ticket = {
   updatedAt: string
   _count?: { messages: number }
 }
+
+export type PaginatedTickets = {
+  data: Ticket[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}

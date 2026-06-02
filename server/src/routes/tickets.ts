@@ -7,19 +7,23 @@ const router = Router()
 
 const SORTABLE_FIELDS = ['createdAt', 'subject', 'fromName', 'status', 'category'] as const
 
+const PAGE_SIZE = 10
+
 const listQuerySchema = z.object({
   sortBy: z.enum(SORTABLE_FIELDS).default('createdAt'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),
   status: z.enum(['open', 'resolved', 'closed']).optional(),
   category: z.enum(['general', 'technical', 'refund', 'none']).optional(),
   search: z.string().trim().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(PAGE_SIZE),
 })
 
 router.get('/', async (req, res) => {
   const result = listQuerySchema.safeParse(req.query)
-  const { sortBy, sortDir, status, category, search } = result.success
+  const { sortBy, sortDir, status, category, search, page, pageSize } = result.success
     ? result.data
-    : { sortBy: 'createdAt' as const, sortDir: 'desc' as const, status: undefined, category: undefined, search: undefined }
+    : { sortBy: 'createdAt' as const, sortDir: 'desc' as const, status: undefined, category: undefined, search: undefined, page: 1, pageSize: PAGE_SIZE }
 
   const where = {
     ...(status ? { status } : {}),
@@ -33,23 +37,30 @@ router.get('/', async (req, res) => {
     } : {}),
   }
 
+  const select = {
+    id: true,
+    subject: true,
+    status: true,
+    category: true,
+    fromEmail: true,
+    fromName: true,
+    createdAt: true,
+    updatedAt: true,
+    _count: { select: { messages: true } },
+  }
+
   try {
-    const tickets = await prisma.ticket.findMany({
-      where,
-      select: {
-        id: true,
-        subject: true,
-        status: true,
-        category: true,
-        fromEmail: true,
-        fromName: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: { select: { messages: true } },
-      },
-      orderBy: { [sortBy]: sortDir },
-    })
-    return res.json(tickets)
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        select,
+        orderBy: { [sortBy]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.ticket.count({ where }),
+    ])
+    return res.json({ data: tickets, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
   } catch (err) {
     console.error('Failed to fetch tickets:', err)
     return res.status(500).json({ error: 'Failed to load tickets' })

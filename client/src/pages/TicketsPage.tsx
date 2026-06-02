@@ -11,10 +11,10 @@ import {
 import { Navbar } from '../components/Navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import { axiosError } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { TicketStatus, TicketCategory, type Ticket } from '@/types/ticket'
+import { TicketStatus, TicketCategory, type Ticket, type PaginatedTickets } from '@/types/ticket'
 
 function StatusBadge({ status }: { status: Ticket['status'] }) {
   const styles: Record<TicketStatus, string> = {
@@ -33,6 +33,79 @@ function CategoryBadge({ category }: { category: Ticket['category'] }) {
     [TicketCategory.refund]: 'bg-amber-50 text-amber-700 ring-amber-700/10',
   }
   return <Badge className={styles[category]}>{category}</Badge>
+}
+
+function Pagination({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPage,
+}: {
+  page: number
+  totalPages: number
+  total: number
+  pageSize: number
+  onPage: (p: number) => void
+}) {
+  if (totalPages <= 1) return null
+
+  const from = (page - 1) * pageSize + 1
+  const to = Math.min(page * pageSize, total)
+
+  const pages: (number | '…')[] = []
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    if (page > 3) pages.push('…')
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i)
+    if (page < totalPages - 2) pages.push('…')
+    pages.push(totalPages)
+  }
+
+  return (
+    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+      <p className="text-sm text-gray-500">
+        Showing{' '}
+        <span className="font-medium text-gray-700">{from}–{to}</span>
+        {' '}of{' '}
+        <span className="font-medium text-gray-700">{total}</span> tickets
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPage(page - 1)}
+          disabled={page === 1}
+          className="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          ← Prev
+        </button>
+        {pages.map((p, i) =>
+          p === '…' ? (
+            <span key={`ellipsis-${i}`} className="px-2 text-sm text-gray-400">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPage(p as number)}
+              className={cn(
+                'min-w-[32px] px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                p === page ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
+              )}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onPage(page + 1)}
+          disabled={page === totalPages}
+          className="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  )
 }
 
 const STATUS_FILTERS = [
@@ -97,24 +170,30 @@ export function TicketsPage() {
   const [filterCategory, setFilterCategory] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
-  // Debounce the search input so we only query after the user stops typing
+  const sortBy = sorting[0]?.id ?? 'createdAt'
+  const sortDir = (sorting[0]?.desc ?? true) ? 'desc' : 'asc'
+
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300)
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  const sortBy = sorting[0]?.id ?? 'createdAt'
-  const sortDir = (sorting[0]?.desc ?? true) ? 'desc' : 'asc'
+  // Reset to page 1 whenever filters, search, or sort change
+  useEffect(() => {
+    setPage(1)
+  }, [sortBy, sortDir, filterStatus, filterCategory, search])
 
-  const { data: tickets, isLoading, error } = useQuery({
-    queryKey: ['tickets', sortBy, sortDir, filterStatus, filterCategory, search],
+  const { data: result, isLoading, error } = useQuery({
+    queryKey: ['tickets', sortBy, sortDir, filterStatus, filterCategory, search, page],
     queryFn: () =>
       axios
-        .get<Ticket[]>('/api/tickets', {
+        .get<PaginatedTickets>('/api/tickets', {
           params: {
             sortBy,
             sortDir,
+            page,
             ...(filterStatus && { status: filterStatus }),
             ...(filterCategory && { category: filterCategory }),
             ...(search && { search }),
@@ -127,7 +206,7 @@ export function TicketsPage() {
   const errorMessage = error ? axiosError(error, 'Failed to load tickets') : null
 
   const table = useReactTable({
-    data: tickets ?? [],
+    data: result?.data ?? [],
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -150,7 +229,6 @@ export function TicketsPage() {
 
           {/* Filter bar */}
           <div className="px-6 py-4 border-t border-b border-gray-100 bg-gray-50/40 flex flex-col gap-3">
-            {/* Search */}
             <div className="relative">
               <svg
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
@@ -171,7 +249,6 @@ export function TicketsPage() {
               />
             </div>
 
-            {/* Pill filters */}
             <div className="flex flex-wrap items-center gap-5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</span>
@@ -182,9 +259,7 @@ export function TicketsPage() {
                       onClick={() => setFilterStatus(f.value)}
                       className={cn(
                         'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-                        filterStatus === f.value
-                          ? 'bg-gray-900 text-white'
-                          : 'text-gray-600 hover:bg-gray-100',
+                        filterStatus === f.value ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
                       )}
                     >
                       {f.label}
@@ -202,9 +277,7 @@ export function TicketsPage() {
                       onClick={() => setFilterCategory(f.value)}
                       className={cn(
                         'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-                        filterCategory === f.value
-                          ? 'bg-gray-900 text-white'
-                          : 'text-gray-600 hover:bg-gray-100',
+                        filterCategory === f.value ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
                       )}
                     >
                       {f.label}
@@ -244,53 +317,64 @@ export function TicketsPage() {
               <p className="px-6 py-8 text-sm text-destructive">{errorMessage}</p>
             )}
             {!isLoading && !errorMessage && (
-              <table className="w-full text-sm">
-                <thead className="border-b border-gray-200 bg-gray-50/60">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
-                        >
-                          {header.column.getCanSort() ? (
-                            <button
-                              className="flex items-center gap-1 hover:text-gray-700 cursor-pointer select-none"
-                              onClick={header.column.getToggleSortingHandler()}
-                            >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              <span className="text-gray-400">
-                                {{ asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] ?? '↕'}
-                              </span>
-                            </button>
-                          ) : (
-                            flexRender(header.column.columnDef.header, header.getContext())
-                          )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {table.getRowModel().rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
-                        No tickets yet
-                      </td>
-                    </tr>
-                  ) : (
-                    table.getRowModel().rows.map((row) => (
-                      <tr key={row.id} className="hover:bg-gray-50/60 transition-colors">
-                        {row.getVisibleCells().map((cell) => (
-                          <td key={cell.id} className="px-6 py-4">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
+              <>
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-200 bg-gray-50/60">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <th
+                            key={header.id}
+                            className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
+                          >
+                            {header.column.getCanSort() ? (
+                              <button
+                                className="flex items-center gap-1 hover:text-gray-700 cursor-pointer select-none"
+                                onClick={header.column.getToggleSortingHandler()}
+                              >
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                <span className="text-gray-400">
+                                  {{ asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] ?? '↕'}
+                                </span>
+                              </button>
+                            ) : (
+                              flexRender(header.column.columnDef.header, header.getContext())
+                            )}
+                          </th>
                         ))}
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {table.getRowModel().rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
+                          No tickets yet
+                        </td>
+                      </tr>
+                    ) : (
+                      table.getRowModel().rows.map((row) => (
+                        <tr key={row.id} className="hover:bg-gray-50/60 transition-colors">
+                          {row.getVisibleCells().map((cell) => (
+                            <td key={cell.id} className="px-6 py-4">
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                {result && (
+                  <Pagination
+                    page={result.page}
+                    totalPages={result.totalPages}
+                    total={result.total}
+                    pageSize={result.pageSize}
+                    onPage={setPage}
+                  />
+                )}
+              </>
             )}
           </CardContent>
         </Card>
