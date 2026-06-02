@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Navbar } from '../components/Navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { axiosError } from '@/lib/api'
 import { TicketStatus, TicketCategory, type Ticket } from '@/types/ticket'
 
 async function fetchTickets(): Promise<Ticket[]> {
@@ -47,12 +48,7 @@ export function TicketsPage() {
     queryFn: fetchTickets,
   })
 
-  const errorMessage =
-    axios.isAxiosError(error) && error.response?.data?.error
-      ? String(error.response.data.error)
-      : error
-        ? 'Failed to load tickets'
-        : null
+  const errorMessage = error ? axiosError(error, 'Failed to load tickets') : null
 
   return (
     <div className="min-h-screen bg-gray-50">

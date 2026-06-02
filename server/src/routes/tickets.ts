@@ -18,7 +18,7 @@ router.get('/', async (_req, res) => {
         updatedAt: true,
         _count: { select: { messages: true } },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
     return res.json(tickets)
   } catch (err) {

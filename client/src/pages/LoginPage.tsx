@@ -1,8 +1,8 @@
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import type { Resolver } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 import { authClient } from '../lib/auth-client'
+import { makeZodResolver } from '../lib/form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,21 +21,6 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-const resolver: Resolver<FormValues> = async (values) => {
-  const result = schema.safeParse(values)
-  if (result.success) {
-    return { values: result.data, errors: {} }
-  }
-  const errors: Record<string, { message: string; type: string }> = {}
-  for (const issue of result.error.issues) {
-    const key = issue.path.join('.') as keyof FormValues
-    if (!errors[key]) {
-      errors[key] = { message: issue.message, type: issue.code }
-    }
-  }
-  return { values: {}, errors }
-}
-
 export function LoginPage() {
   const navigate = useNavigate()
 
@@ -45,7 +30,7 @@ export function LoginPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    resolver,
+    resolver: makeZodResolver(schema),
     mode: 'onTouched',
   })
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash2 } from 'lucide-react'
+import { axiosError } from '@/lib/api'
 import type { User } from '@/types/user'
 import { CreateUserModal } from './users/CreateUserModal'
 import { EditUserModal } from './users/EditUserModal'
@@ -43,12 +44,7 @@ export function UsersPage() {
     queryFn: fetchUsers,
   })
 
-  const errorMessage =
-    axios.isAxiosError(error) && error.response?.data?.error
-      ? String(error.response.data.error)
-      : error
-        ? 'Failed to load users'
-        : null
+  const errorMessage = error ? axiosError(error, 'Failed to load users') : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -177,7 +173,10 @@ export function UsersPage() {
         <DeleteConfirmModal
           user={deleteUser}
           onClose={() => setDeleteUser(null)}
-          onDeleted={() => setDeleteUser(null)}
+          onDeleted={() => {
+            setDeleteUser(null)
+            queryClient.invalidateQueries({ queryKey: ['users'] })
+          }}
         />
       )}
     </div>

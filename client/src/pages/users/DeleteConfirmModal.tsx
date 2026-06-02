@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
+import { axiosError } from '@/lib/api'
 import type { User } from '@/types/user'
 
 export function DeleteConfirmModal({
@@ -14,23 +15,13 @@ export function DeleteConfirmModal({
   onClose: () => void
   onDeleted: () => void
 }) {
-  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: () =>
       axios.delete(`/api/users/${user.id}`, { withCredentials: true }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      onDeleted()
-    },
-    onError: (err) => {
-      const msg =
-        axios.isAxiosError(err) && err.response?.data?.error
-          ? String(err.response.data.error)
-          : 'Failed to delete user'
-      setServerError(msg)
-    },
+    onSuccess: () => onDeleted(),
+    onError: (err) => setServerError(axiosError(err, 'Failed to delete user')),
   })
 
   useEffect(() => {

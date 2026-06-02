@@ -4,6 +4,10 @@ import { prisma } from '../lib/db.js'
 
 const router = Router()
 
+// When a provider is chosen, set WEBHOOK_SECRET in .env and add signature
+// verification here before processing the payload.
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
+
 // Normalized inbound email payload — provider-agnostic.
 // When wiring up a real email provider, add an adapter route (e.g. /email/resend)
 // that transforms the provider's payload into this shape and forwards it here.

@@ -2,15 +2,16 @@ import { useEffect } from 'react'
 import axios from 'axios'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import type { Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
+import { makeZodResolver } from '@/lib/form'
+import { axiosError } from '@/lib/api'
 import type { User } from '@/types/user'
 
-const editUserSchema = z.object({
+const schema = z.object({
   name: z.string()
     .trim()
     .min(1, { error: 'Name is required' })
@@ -24,18 +25,7 @@ const editUserSchema = z.object({
     .refine((v) => v === '' || !/\s/.test(v), { message: 'Password must not contain spaces' }),
 })
 
-type EditUserValues = z.infer<typeof editUserSchema>
-
-const editUserResolver: Resolver<EditUserValues> = async (values) => {
-  const result = editUserSchema.safeParse(values)
-  if (result.success) return { values: result.data, errors: {} }
-  const errors: Record<string, { message: string; type: string }> = {}
-  for (const issue of result.error.issues) {
-    const key = issue.path.join('.') as keyof EditUserValues
-    if (!errors[key]) errors[key] = { message: issue.message, type: issue.code }
-  }
-  return { values: {}, errors }
-}
+type FormValues = z.infer<typeof schema>
 
 export function EditUserModal({
   user,
@@ -52,19 +42,15 @@ export function EditUserModal({
     setError,
     reset,
     formState: { errors },
-  } = useForm<EditUserValues>({
-    resolver: editUserResolver,
+  } = useForm<FormValues>({
+    resolver: makeZodResolver(schema),
     mode: 'onChange',
     defaultValues: { name: '', email: '', role: 'agent', password: '' },
   })
 
   const mutation = useMutation({
-    mutationFn: (data: EditUserValues) => {
-      const body: Record<string, unknown> = {
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      }
+    mutationFn: (data: FormValues) => {
+      const body: Record<string, unknown> = { name: data.name, email: data.email, role: data.role }
       if (data.password) body.password = data.password
       return axios.patch<User>(`/api/users/${user.id}`, body, { withCredentials: true })
     },
@@ -73,11 +59,7 @@ export function EditUserModal({
       onUpdated()
     },
     onError: (err) => {
-      const msg =
-        axios.isAxiosError(err) && err.response?.data?.error
-          ? String(err.response.data.error)
-          : 'Failed to update user'
-      setError('root', { message: msg })
+      setError('root', { message: axiosError(err, 'Failed to update user') })
     },
   })
 

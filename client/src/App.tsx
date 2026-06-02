@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { authClient } from './lib/auth-client'
+import { Skeleton } from '@/components/ui/skeleton'
 import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { UsersPage } from './pages/UsersPage'
@@ -16,8 +17,12 @@ function ProtectedRoute({
 
   if (isPending) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <span className="text-sm text-gray-500">Loading…</span>
+      <div className="min-h-screen bg-gray-50">
+        <div className="border-b border-gray-200 bg-white h-16" />
+        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+          <Skeleton className="h-8 w-48 mb-6" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </main>
       </div>
     )
   }

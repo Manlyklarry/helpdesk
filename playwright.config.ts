@@ -104,7 +104,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'bun --cwd=server run start:test',
-      url: 'http://localhost:3001/api/health',
+      url: `${testEnv.API_BASE_URL ?? 'http://127.0.0.1:3001'}/api/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },

@@ -2,15 +2,16 @@ import { useEffect } from 'react'
 import axios from 'axios'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import type { Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from 'lucide-react'
+import { makeZodResolver } from '@/lib/form'
+import { axiosError } from '@/lib/api'
 import type { User } from '@/types/user'
 
-const createUserSchema = z.object({
+const schema = z.object({
   name: z.string()
     .trim()
     .min(1, { error: 'Name is required' })
@@ -24,18 +25,7 @@ const createUserSchema = z.object({
     .refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' }),
 })
 
-type CreateUserValues = z.infer<typeof createUserSchema>
-
-const createUserResolver: Resolver<CreateUserValues> = async (values) => {
-  const result = createUserSchema.safeParse(values)
-  if (result.success) return { values: result.data, errors: {} }
-  const errors: Record<string, { message: string; type: string }> = {}
-  for (const issue of result.error.issues) {
-    const key = issue.path.join('.') as keyof CreateUserValues
-    if (!errors[key]) errors[key] = { message: issue.message, type: issue.code }
-  }
-  return { values: {}, errors }
-}
+type FormValues = z.infer<typeof schema>
 
 export function CreateUserModal({
   open,
@@ -52,24 +42,20 @@ export function CreateUserModal({
     setError,
     reset,
     formState: { errors },
-  } = useForm<CreateUserValues>({
-    resolver: createUserResolver,
+  } = useForm<FormValues>({
+    resolver: makeZodResolver(schema),
     mode: 'onChange',
   })
 
   const mutation = useMutation({
-    mutationFn: (data: CreateUserValues) =>
+    mutationFn: (data: FormValues) =>
       axios.post<User>('/api/users', data, { withCredentials: true }),
     onSuccess: () => {
       reset()
       onCreated()
     },
     onError: (err) => {
-      const msg =
-        axios.isAxiosError(err) && err.response?.data?.error
-          ? String(err.response.data.error)
-          : 'Failed to create user'
-      setError('root', { message: msg })
+      setError('root', { message: axiosError(err, 'Failed to create user') })
     },
   })
 

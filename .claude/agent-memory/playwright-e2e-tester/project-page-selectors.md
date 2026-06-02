@@ -84,6 +84,35 @@ metadata:
 | Confirm button | `page.getByRole('button', { name: 'Delete' })` — variant="destructive" |
 | Cancel button | `page.getByRole('button', { name: 'Cancel' })` |
 
+## TicketsPage (`client/src/pages/TicketsPage.tsx`)
+
+| Element | Locator |
+|---|---|
+| Tickets heading | `page.getByRole('heading', { name: 'Tickets' })` |
+| Card title | `page.getByText('All tickets')` |
+| Column header: Subject | `page.getByRole('columnheader', { name: /subject/i })` — use this to confirm skeleton is gone |
+| Column header: Sender | `page.getByRole('columnheader', { name: /sender/i })` |
+| Column header: Category | `page.getByRole('columnheader', { name: /category/i })` |
+| Column header: Status | `page.getByRole('columnheader', { name: /status/i })` |
+| Column header: Date | `page.getByRole('columnheader', { name: /date/i })` |
+| Ticket row by subject | `page.getByRole('cell', { name: subject })` |
+| Sender email | `page.getByText(fromEmail)` — rendered as a `<div>` inside the Sender `<td>` |
+| Empty state | `page.getByRole('cell', { name: 'No tickets yet' })` |
+| Status badge | inline `<span>` with class `bg-blue-50` (open) / `bg-green-50` (resolved) / `bg-gray-100` (closed) |
+| Category badge | inline `<span>` with class `bg-purple-50` (technical) / `bg-amber-50` (refund) / `bg-gray-100` (general) |
+
+## Webhook (`POST /api/webhooks/email` — test server direct call)
+
+Endpoint lives at `http://localhost:3001/api/webhooks/email` — bypass the Vite proxy and call the
+test server directly with Playwright's `request` fixture.  Requires no authentication.
+
+| Case | Expected |
+|---|---|
+| Valid payload | `{ ok: true }`, status 200 |
+| Invalid/missing fields | `{ ok: false }`, status 200 (retry-storm prevention) |
+| `inReplyTo` set to existing `messageId` | appends to existing ticket, no new row in `/tickets` |
+| Bare email `from` (no "Name <>") | `{ ok: true }`, stored `fromEmail` equals the bare address |
+
 ## ProtectedRoute loading state
 
 Text: `"Loading…"` (with ellipsis `…`) inside a `<span>` — only visible during `isPending`.
