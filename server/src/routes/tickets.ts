@@ -4,7 +4,19 @@ import { prisma } from '../lib/db.js'
 
 const router = Router()
 
-router.get('/', async (_req, res) => {
+const SORTABLE_FIELDS = ['createdAt', 'subject', 'fromName', 'status', 'category'] as const
+
+const listQuerySchema = z.object({
+  sortBy: z.enum(SORTABLE_FIELDS).default('createdAt'),
+  sortDir: z.enum(['asc', 'desc']).default('desc'),
+})
+
+router.get('/', async (req, res) => {
+  const result = listQuerySchema.safeParse(req.query)
+  const { sortBy, sortDir } = result.success
+    ? result.data
+    : { sortBy: 'createdAt' as const, sortDir: 'desc' as const }
+
   try {
     const tickets = await prisma.ticket.findMany({
       select: {
@@ -18,7 +30,7 @@ router.get('/', async (_req, res) => {
         updatedAt: true,
         _count: { select: { messages: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { [sortBy]: sortDir },
     })
     return res.json(tickets)
   } catch (err) {
