@@ -87,7 +87,17 @@ export default defineConfig({
     },
 
     // ------------------------------------------------------------------
-    // 5. General chromium project — picks up any spec not matched above
+    // 5. Tickets tests — webhook ingestion + ticket list UI
+    // ------------------------------------------------------------------
+    {
+      name: 'tickets',
+      testMatch: /tickets\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+    },
+
+    // ------------------------------------------------------------------
+    // 6. General chromium project — picks up any spec not matched above
     // ------------------------------------------------------------------
     {
       name: 'chromium',
@@ -97,6 +107,7 @@ export default defineConfig({
         /login\.spec\.ts/,
         /protected-route\.spec\.ts/,
         /logout\.spec\.ts/,
+        /tickets\.spec\.ts/,
       ],
       dependencies: ['setup'],
     },

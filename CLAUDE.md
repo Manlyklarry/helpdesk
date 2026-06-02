@@ -47,6 +47,8 @@ helpdesk/
 │   │   │   └── ui/         # shadcn/ui generated components (button, card, input, label)
 │   │   ├── lib/
 │   │   │   ├── auth-client.ts  # Better Auth client (createAuthClient)
+│   │   │   ├── api.ts          # axiosError(err, fallback) — shared error extractor
+│   │   │   ├── form.ts         # makeZodResolver(schema) — shared RHF/Zod resolver factory
 │   │   │   └── utils.ts        # cn() helper (clsx + tailwind-merge)
 │   │   └── pages/
 │   │       ├── LoginPage.tsx   # Login form (react-hook-form + zod + shadcn)
@@ -104,9 +106,20 @@ bun run test:e2e:ui       # Playwright UI mode
 
 ## Writing E2E Tests
 
-Use the **`playwright-e2e-tester`** agent for all E2E test authoring. Trigger it after implementing a new feature or page, or when explicitly asked to write tests.
+E2E tests are for scenarios that **cannot** be covered by component tests — real server behaviour, database state, or multi-step flows across the full stack. Before writing an E2E test, ask: _can this be asserted by mocking axios in a component test?_ If yes, write the component test instead.
 
-The agent knows the full test infrastructure setup, correct file paths, ports, credentials, and Playwright patterns for this codebase. Do not write test files directly — always delegate to that agent.
+**Appropriate E2E scenarios:**
+- Auth flows (login, logout, session expiry)
+- Webhook API contracts (status codes, response shape, retry-storm behaviour)
+- Server-side logic that depends on DB state (e.g. email threading)
+- Protected-route redirects
+
+**Not appropriate for E2E** (use component tests instead):
+- Table rows, badge colours, date formatting
+- Loading skeletons, empty states, error messages
+- Form validation, modal open/close, button disabled states
+
+Use the **`playwright-e2e-tester`** agent when an E2E test is genuinely warranted. The agent knows the full test infrastructure setup, correct file paths, ports, credentials, and Playwright patterns for this codebase. Do not write E2E test files directly — always delegate to that agent.
 
 **Note:** `server/.env.test` is git-ignored. It must exist locally before running tests. See `.env.example` for the variable list; the test-specific values are port 3001, `helpdesk_test` DB URL, and test-only auth credentials.
 
@@ -169,6 +182,8 @@ Current routes:
 |------|-----------|-----------|
 | `/login` | `LoginPage` | No |
 | `/` | `HomePage` | Yes |
+| `/tickets` | `TicketsPage` | Yes |
+| `/users` | `UsersPage` | Yes (admin only) |
 | `*` | Redirect → `/` | — |
 
 ### Login page (`client/src/pages/LoginPage.tsx`)
@@ -203,7 +218,7 @@ All client-side API calls use **Axios** + **TanStack Query v5**. Never use `fetc
 - Wrap every server-state read in `useQuery({ queryKey: [...], queryFn })` — never use `useEffect` + `useState` for data fetching
 - Use `useMutation` for writes (POST / PATCH / DELETE); call `queryClient.invalidateQueries` in `onSuccess` to keep the cache fresh
 - The `QueryClientProvider` is mounted in `client/src/main.tsx` — do not add additional providers
-- Extract axios error messages with `axios.isAxiosError(err) && err.response?.data?.error`
+- Extract axios error messages with the shared helper: `import { axiosError } from '@/lib/api'` → `axiosError(err, 'fallback message')`. Never inline the 3-line extraction pattern.
 
 ## Loading States
 
@@ -214,13 +229,29 @@ Always use the `Skeleton` component (`client/src/components/ui/skeleton.tsx`) fo
 - Use `isLoading` from `useQuery` to gate the skeleton; show the real content once `isLoading` is false
 - **Note:** the shadcn CLI does not support the `base-nova` style — write new UI primitives manually following the pattern in `skeleton.tsx` (import `cn` from `@/lib/utils`, export a single named function component)
 
+## Testing Strategy
+
+**Default to component tests. Use E2E only when a real server or database is required.**
+
+| Scenario | Test type |
+|----------|-----------|
+| Page renders data correctly (table rows, badges, dates) | Component |
+| Loading skeleton, empty state, error state | Component |
+| Form validation, modal open/close, button states | Component |
+| API response shape / HTTP status codes | E2E |
+| Server-side business logic (e.g. email threading) | E2E |
+| Full auth flows (login, logout, session) | E2E |
+| Multi-step integration across server + DB + UI | E2E |
+
+If a test can be written by mocking `axios`, it belongs in a component test. Reach for E2E only when the assertion requires a real running server or database.
+
 ## Component & Unit Tests
 
 ### Stack
 - **Runner:** Vitest v4 (configured in `client/vite.config.ts` — `globals: true`, `environment: jsdom`)
 - **Rendering:** `@testing-library/react`
 - **Matchers:** `@testing-library/jest-dom` (extended in `client/src/test/setup.ts`)
-- **Test files:** co-located with the component, e.g. `src/pages/UsersPage.test.tsx`
+- **Test files:** co-located with the component, e.g. `src/pages/TicketsPage.test.tsx`
 
 ### Running tests
 ```bash
@@ -296,7 +327,7 @@ vi.spyOn(axios, 'get').mockRejectedValue(err)
 - Prisma v7 uses `prisma.config.ts` for the datasource URL — `url` is not in `schema.prisma`
 - Prisma CLI must be run with `DATABASE_URL` in env: `$env:DATABASE_URL=...; .\node_modules\.bin\prisma migrate dev`
 - Email threading uses `Message-ID` / `In-Reply-To` headers
-- **Validation with Zod:** use Zod for all request body validation on the server (`zod` is in `server/package.json`). Define a schema per route, call `schema.safeParse(req.body)`, and return `res.status(400).json({ error: issues[0].message })` on failure. On the client, use the same Zod schema as the react-hook-form resolver (inline resolver pattern from `LoginPage.tsx` — avoids Vite module-identity issues with `instanceof`).
+- **Validation with Zod:** use Zod for all request body validation on the server (`zod` is in `server/package.json`). Define a schema per route, call `schema.safeParse(req.body)`, and return `res.status(400).json({ error: issues[0].message })` on failure. On the client, pass schemas through the shared resolver factory: `import { makeZodResolver } from '@/lib/form'` → `resolver: makeZodResolver(schema)`. Never inline the resolver function.
 
 ## Using Context7 for Documentation
 
