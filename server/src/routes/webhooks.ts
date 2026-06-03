@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/db.js'
+import { sanitizeEmailHtml } from '../lib/sanitize.js'
 
 const router = Router()
 
@@ -12,13 +13,13 @@ const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
 // When wiring up a real email provider, add an adapter route (e.g. /email/resend)
 // that transforms the provider's payload into this shape and forwards it here.
 const inboundEmailSchema = z.object({
-  from: z.string(),       // "Name <email@example.com>" or bare email
-  to: z.array(z.string()).min(1),
-  subject: z.string(),
-  text: z.string(),
-  html: z.string().optional(),
-  messageId: z.string(),  // unique ID for this message (for threading)
-  inReplyTo: z.string().optional(), // messageId of the parent email
+  from: z.string().max(320),
+  to: z.array(z.string().max(320)).min(1),
+  subject: z.string().max(998),
+  text: z.string().max(200_000),
+  html: z.string().max(500_000).optional(),
+  messageId: z.string().max(998),
+  inReplyTo: z.string().max(998).optional(),
 })
 
 function parseFrom(from: string): { fromName: string; fromEmail: string } {
@@ -39,6 +40,7 @@ router.post('/email', async (req, res) => {
 
   const { from, subject, text, html, messageId, inReplyTo } = parsed.data
   const { fromName, fromEmail } = parseFrom(from)
+  const safeHtml = html ? sanitizeEmailHtml(html) : undefined
 
   try {
     if (inReplyTo) {
@@ -59,7 +61,7 @@ router.post('/email', async (req, res) => {
               fromEmail,
               fromName,
               body: text,
-              htmlBody: html,
+              htmlBody: safeHtml,
             },
           }),
           prisma.ticket.update({
@@ -86,7 +88,7 @@ router.post('/email', async (req, res) => {
             fromEmail,
             fromName,
             body: text,
-            htmlBody: html,
+            htmlBody: safeHtml,
           },
         },
       },

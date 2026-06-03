@@ -16,13 +16,16 @@ const schema = z.object({
   name: z.string()
     .trim()
     .min(1, { error: 'Name is required' })
-    .min(3, { error: 'Name must be at least 3 characters' }),
+    .min(3, { error: 'Name must be at least 3 characters' })
+    .max(100, { error: 'Name must be at most 100 characters' }),
   email: z.string()
     .min(1, { error: 'Email is required' })
-    .email({ error: 'Enter a valid email address' }),
+    .email({ error: 'Enter a valid email address' })
+    .max(254, { error: 'Email must be at most 254 characters' }),
   role: z.enum(['admin', 'agent']),
   password: z.string()
     .refine((v) => v === '' || v.length >= 8, { message: 'Password must be at least 8 characters' })
+    .refine((v) => v === '' || v.length <= 128, { message: 'Password must be at most 128 characters' })
     .refine((v) => v === '' || !/\s/.test(v), { message: 'Password must not contain spaces' }),
 })
 

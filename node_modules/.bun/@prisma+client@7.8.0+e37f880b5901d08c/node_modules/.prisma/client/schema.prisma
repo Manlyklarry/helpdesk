@@ -88,6 +88,7 @@ model Ticket {
   category        TicketCategory?
   fromEmail       String
   fromName        String
+  bodyHtml        String?
   assignedAgentId String?
   assignedAgent   User?           @relation("AssignedTickets", fields: [assignedAgentId], references: [id], onDelete: SetNull)
   createdAt       DateTime        @default(now())

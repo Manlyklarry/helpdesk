@@ -24,7 +24,7 @@ const listQuerySchema = z.object({
   sortDir: z.enum(['asc', 'desc']).default('desc'),
   status: z.enum(['open', 'resolved', 'closed']).optional(),
   category: z.enum(['general', 'technical', 'refund', 'none']).optional(),
-  search: z.string().trim().optional(),
+  search: z.string().trim().max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(PAGE_SIZE),
 })
@@ -128,7 +128,7 @@ router.patch('/:id/assign', async (req, res) => {
 })
 
 const replySchema = z.object({
-  body: z.string().trim().min(1, { message: 'Reply cannot be empty' }),
+  body: z.string().trim().min(1, { message: 'Reply cannot be empty' }).max(50_000, { message: 'Reply is too long' }),
 })
 
 router.post('/:id/messages', async (req, res) => {

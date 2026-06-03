@@ -8,18 +8,19 @@ import { firstZodError } from '../lib/zod.js'
 const router = Router()
 
 const createUserSchema = z.object({
-  name: z.string().trim().min(3, { error: 'Name must be at least 3 characters' }),
-  email: z.string().trim().toLowerCase().email({ error: 'Invalid email address' }),
-  password: z.string().trim().min(8, { error: 'Password must be at least 8 characters' }).refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' }),
+  name: z.string().trim().min(3, { error: 'Name must be at least 3 characters' }).max(100, { error: 'Name must be at most 100 characters' }),
+  email: z.string().trim().toLowerCase().email({ error: 'Invalid email address' }).max(254, { error: 'Email must be at most 254 characters' }),
+  password: z.string().trim().min(8, { error: 'Password must be at least 8 characters' }).max(128, { error: 'Password must be at most 128 characters' }).refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' }),
   role: z.enum(['admin', 'agent']).default('agent'),
 })
 
 const updateUserSchema = z.object({
-  name: z.string().trim().min(3, { error: 'Name must be at least 3 characters' }),
-  email: z.string().trim().toLowerCase().email({ error: 'Invalid email address' }),
+  name: z.string().trim().min(3, { error: 'Name must be at least 3 characters' }).max(100, { error: 'Name must be at most 100 characters' }),
+  email: z.string().trim().toLowerCase().email({ error: 'Invalid email address' }).max(254, { error: 'Email must be at most 254 characters' }),
   role: z.enum(['admin', 'agent']),
   password: z.string().trim()
     .min(8, { error: 'Password must be at least 8 characters' })
+    .max(128, { error: 'Password must be at most 128 characters' })
     .refine((v) => !/\s/.test(v), { message: 'Password must not contain spaces' })
     .optional(),
 })

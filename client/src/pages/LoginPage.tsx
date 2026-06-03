@@ -15,8 +15,8 @@ import {
 } from '@/components/ui/card'
 
 const schema = z.object({
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().email('Enter a valid email address').max(254, 'Email is too long'),
+  password: z.string().min(1, 'Password is required').max(128, 'Password is too long'),
 })
 
 type FormValues = z.infer<typeof schema>

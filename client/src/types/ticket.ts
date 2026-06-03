@@ -61,5 +61,6 @@ export type TicketMessage = {
 }
 
 export type TicketDetail = Ticket & {
+  bodyHtml: string | null
   messages: TicketMessage[]
 }
