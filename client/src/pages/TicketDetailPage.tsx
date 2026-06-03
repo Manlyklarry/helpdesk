@@ -8,6 +8,7 @@ import { axiosError } from '@/lib/api'
 import { StatusBadge, CategoryBadge } from '@/components/ticket-badges'
 import { ReplyBox } from '@/components/ReplyBox'
 import { useTicketPatch } from '@/hooks/useTicketPatch'
+import { useSummarize } from '@/hooks/useSummarize'
 import { SenderType, type TicketDetail } from '@/types/ticket'
 import type { AgentSummary } from '@/types/user'
 
@@ -151,6 +152,35 @@ function AgentSelect({ ticketId, currentAgent }: { ticketId: number; currentAgen
   )
 }
 
+function TicketSummary({ ticketId, messageCount }: { ticketId: number; messageCount: number }) {
+  const { summarize, isSummarizing, summary, error } = useSummarize(ticketId)
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => summarize()}
+          disabled={isSummarizing || messageCount === 0}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <span>✨</span>
+          {isSummarizing ? 'Summarizing…' : summary ? 'Re-summarize' : 'Summarize'}
+        </button>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+
+      {summary && (
+        <Card className="mt-3 border-purple-100 bg-purple-50/30">
+          <CardContent className="p-5">
+            <p className="text-xs font-medium text-purple-500 uppercase tracking-wide mb-3">AI Summary</p>
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{summary}</div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -246,6 +276,8 @@ export function TicketDetailPage() {
                   ))
                 )}
               </div>
+
+              <TicketSummary ticketId={ticket.id} messageCount={ticket.messages.length} />
 
               <ReplyBox ticketId={ticket.id} />
             </div>

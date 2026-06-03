@@ -80,6 +80,8 @@ router.post('/email', async (req, res) => {
         subject,
         fromEmail,
         fromName,
+        body: text,
+        bodyHtml: safeHtml,
         messages: {
           create: {
             messageId,

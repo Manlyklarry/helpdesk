@@ -61,10 +61,15 @@ export type TicketMessage = {
 }
 
 export type TicketDetail = Ticket & {
+  body: string | null
   bodyHtml: string | null
   messages: TicketMessage[]
 }
 
 export type PolishReplyResponse = {
   polished: string
+}
+
+export type SummarizeResponse = {
+  summary: string
 }

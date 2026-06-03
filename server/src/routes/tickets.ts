@@ -5,7 +5,7 @@ import { openai } from '@ai-sdk/openai'
 import { prisma } from '../lib/db.js'
 import { firstZodError } from '../lib/zod.js'
 import { parseIntParam } from '../lib/http.js'
-import { extractFirstName, buildPolishSystem } from '../lib/ai.js'
+import { extractFirstName, buildPolishSystem, buildSummarizeSystem, buildSummarizePrompt } from '../lib/ai.js'
 
 const router = Router()
 
@@ -185,6 +185,33 @@ router.post('/:id/polish-reply', async (req, res) => {
   } catch (err) {
     console.error('Failed to polish reply:', err)
     return res.status(500).json({ error: 'Failed to polish reply' })
+  }
+})
+
+router.post('/:id/summarize', async (req, res) => {
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
+
+  try {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        subject: true,
+        messages: { select: { senderType: true, fromName: true, body: true }, orderBy: { createdAt: 'asc' } },
+      },
+    })
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
+    if (ticket.messages.length === 0) return res.status(422).json({ error: 'No messages to summarize' })
+
+    const { text } = await generateText({
+      model: openai('gpt-5-nano'),
+      system: buildSummarizeSystem(),
+      prompt: buildSummarizePrompt(ticket.subject, ticket.messages),
+    })
+    return res.json({ summary: text })
+  } catch (err) {
+    console.error('Failed to summarize ticket:', err)
+    return res.status(500).json({ error: 'Failed to summarize ticket' })
   }
 })
 
