@@ -33,12 +33,15 @@ export async function createUser(
 }
 
 export async function deleteUser(id: string) {
-  await prisma.session.deleteMany({ where: { userId: id } })
-  return prisma.user.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-    select: { id: true },
-  })
+  return prisma.$transaction([
+    prisma.session.deleteMany({ where: { userId: id } }),
+    prisma.ticket.updateMany({ where: { assignedAgentId: id }, data: { assignedAgentId: null } }),
+    prisma.user.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      select: { id: true },
+    }),
+  ])
 }
 
 export async function updateUser(id: string, data: UpdateUserData) {

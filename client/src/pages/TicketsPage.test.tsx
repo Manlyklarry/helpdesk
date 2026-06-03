@@ -201,7 +201,6 @@ describe('TicketsPage', () => {
   it('shows "Unassigned" as the selected option for a ticket with no agent', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-    const selects = document.querySelectorAll('select')
     const aliceRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('alice@example.com'))!
     const select = aliceRow.querySelector('select') as HTMLSelectElement
     expect(select.value).toBe('')
