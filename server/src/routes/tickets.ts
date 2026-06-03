@@ -1,11 +1,9 @@
 import { Router, type Response } from 'express'
 import { z } from 'zod'
-import { generateText } from 'ai'
-import { openai } from '@ai-sdk/openai'
 import { prisma } from '../lib/db.js'
 import { firstZodError } from '../lib/zod.js'
 import { parseIntParam } from '../lib/http.js'
-import { extractFirstName, buildPolishSystem, buildSummarizeSystem, buildSummarizePrompt } from '../lib/ai.js'
+import { extractFirstName, polishReply, summarizeTicket } from '../lib/ai.js'
 
 const router = Router()
 
@@ -175,13 +173,8 @@ router.post('/:id/polish-reply', async (req, res) => {
 
     const agent = req.user!
     const customerFirstName = extractFirstName(ticket.fromName)
-
-    const { text } = await generateText({
-      model: openai('gpt-5-nano'),
-      system: buildPolishSystem(customerFirstName, agent.name),
-      prompt: parsed.data.body,
-    })
-    return res.json({ polished: text })
+    const polished = await polishReply(parsed.data.body, customerFirstName, agent.name)
+    return res.json({ polished })
   } catch (err) {
     console.error('Failed to polish reply:', err)
     return res.status(500).json({ error: 'Failed to polish reply' })
@@ -203,12 +196,8 @@ router.post('/:id/summarize', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
     if (ticket.messages.length === 0) return res.status(422).json({ error: 'No messages to summarize' })
 
-    const { text } = await generateText({
-      model: openai('gpt-5-nano'),
-      system: buildSummarizeSystem(),
-      prompt: buildSummarizePrompt(ticket.subject, ticket.messages),
-    })
-    return res.json({ summary: text })
+    const summary = await summarizeTicket(ticket.subject, ticket.messages)
+    return res.json({ summary })
   } catch (err) {
     console.error('Failed to summarize ticket:', err)
     return res.status(500).json({ error: 'Failed to summarize ticket' })
