@@ -131,18 +131,26 @@ bun run test:e2e:ui       # Playwright UI mode
 
 ## Writing E2E Tests
 
-E2E tests are for scenarios that **cannot** be covered by component tests — real server behaviour, database state, or multi-step flows across the full stack. Before writing an E2E test, ask: _can this be asserted by mocking axios in a component test?_ If yes, write the component test instead.
+**Rule: write an E2E test only when the assertion requires a real running server or real database state. If it can be tested by mocking `axios`, it belongs in a component test.**
 
-**Appropriate E2E scenarios:**
-- Auth flows (login, logout, session expiry)
-- Webhook API contracts (status codes, response shape, retry-storm behaviour)
-- Server-side logic that depends on DB state (e.g. email threading)
-- Protected-route redirects
+Ask before writing any E2E test: _does this test pass or fail based on what the real server/DB does?_ If no — it's a component test.
 
-**Not appropriate for E2E** (use component tests instead):
-- Table rows, badge colours, date formatting
-- Loading skeletons, empty states, error messages
-- Form validation, modal open/close, button disabled states
+**Always write E2E for:**
+- Protected-route redirects (real Better Auth session required to verify)
+- Server-side rejection of bad credentials (Better Auth returns the error, not the client)
+- DB-backed mutations (create, edit, delete) and their effect on the table
+- Webhook API contracts (status codes, response shape, DB side-effects)
+- Full session lifecycle: login → action → logout → redirect
+- Email threading, message persistence, reply flows
+
+**Never write E2E for:**
+- Page headings, column headers, any static text
+- Badge colours, date formatting, number formatting
+- Loading skeletons, empty states, error message text
+- Zod / client-side validation errors and aria-invalid attributes
+- Button disabled/loading states
+- Navbar rendering or role-based link visibility
+- Any assertion that can be satisfied with a mocked axios response
 
 Use the **`playwright-e2e-tester`** agent when an E2E test is genuinely warranted. The agent knows the full test infrastructure setup, correct file paths, ports, credentials, and Playwright patterns for this codebase. Do not write E2E test files directly — always delegate to that agent.
 
@@ -288,19 +296,23 @@ Always use the `Skeleton` component (`client/src/components/ui/skeleton.tsx`) fo
 
 ## Testing Strategy
 
-**Default to component tests. Use E2E only when a real server or database is required.**
+**Default to component tests. Write E2E only when the assertion requires a real running server or real database state — not just because a feature "touches" the server.**
 
 | Scenario | Test type |
 |----------|-----------|
 | Page renders data correctly (table rows, badges, dates) | Component |
 | Loading skeleton, empty state, error state | Component |
-| Form validation, modal open/close, button states | Component |
-| API response shape / HTTP status codes | E2E |
-| Server-side business logic (e.g. email threading) | E2E |
-| Full auth flows (login, logout, session) | E2E |
-| Multi-step integration across server + DB + UI | E2E |
+| Form validation (Zod errors, aria-invalid, disabled states) | Component |
+| Modal open/close, button states, role-based UI differences | Component |
+| Navbar rendering, static text, badge colours | Component |
+| Protected-route redirects (real session required) | E2E |
+| Auth: valid credentials, wrong password, non-existent email | E2E |
+| Full session lifecycle (login → action → logout → redirect) | E2E |
+| DB-backed mutations and their visible effect (create, edit, delete) | E2E |
+| Webhook API contracts (status codes, response shape, DB side-effects) | E2E |
+| Server-side business logic (e.g. email threading, message persistence) | E2E |
 
-If a test can be written by mocking `axios`, it belongs in a component test. Reach for E2E only when the assertion requires a real running server or database.
+**Decision rule:** if a test can be written by mocking `axios` in a component test, it is a component test — regardless of whether it involves auth, navigation, or server data. Reach for E2E only when the assertion genuinely requires a real server response or database record to be meaningful.
 
 ## Component & Unit Tests
 

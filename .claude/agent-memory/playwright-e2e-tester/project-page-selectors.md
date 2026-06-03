@@ -113,6 +113,26 @@ test server directly with Playwright's `request` fixture.  Requires no authentic
 | `inReplyTo` set to existing `messageId` | appends to existing ticket, no new row in `/tickets` |
 | Bare email `from` (no "Name <>") | `{ ok: true }`, stored `fromEmail` equals the bare address |
 
+## TicketDetailPage (`client/src/pages/TicketDetailPage.tsx`)
+
+| Element | Locator |
+|---|---|
+| Page heading (subject) | `page.getByRole('heading', { level: 1, name: subject })` |
+| Sender name (sidebar) | `page.getByText('Alice Test')` — rendered in `<p class="text-sm font-medium">` |
+| Reply textarea | `page.getByPlaceholder('Type your reply…')` |
+| Send reply button (idle) | `page.getByRole('button', { name: 'Send reply' })` |
+| Send reply button (pending) | `page.getByRole('button', { name: 'Sending…' })` — note `…` |
+| Customer sender pill | `page.getByText('Customer', { exact: true })` — `<span class="bg-gray-100 text-gray-600">` |
+| Agent sender pill | `page.getByText('Agent', { exact: true })` — `<span class="bg-blue-100 text-blue-700">` |
+| Messages count (sidebar) | `page.locator('div').filter({ hasText: /^Messages$/ }).getByText('1')` — filter to parent div |
+| Back to tickets button | `page.getByRole('button', { name: /back to tickets/i })` — uses `navigate('/tickets')` |
+| Not found message | `page.getByText('Ticket not found')` |
+
+Notes:
+- `getByText('Agent', { exact: true })` needed because "Assigned agent" label is also on the page
+- `page.locator('div').filter({ hasText: /^Messages$/ })` anchors to the exact label paragraph's parent `<div>`
+- The sidebar count updates reactively after `queryClient.invalidateQueries` completes on reply success
+
 ## ProtectedRoute loading state
 
 Text: `"Loading…"` (with ellipsis `…`) inside a `<span>` — only visible during `isPending`.

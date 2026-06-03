@@ -14,52 +14,6 @@ async function gotoUsersPage(page: Parameters<typeof loginAsAdmin>[0]) {
 }
 
 // ---------------------------------------------------------------------------
-// Read — table and seeded rows
-// ---------------------------------------------------------------------------
-
-test.describe('Read: users table', () => {
-  test.use({ storageState: ADMIN_AUTH_FILE })
-
-  test('shows the page heading and all column headers', async ({ page }) => {
-    await gotoUsersPage(page)
-
-    await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: /name/i })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: /email/i })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: /role/i })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: /joined/i })).toBeVisible()
-  })
-
-  test('seeded admin user appears with a purple admin badge', async ({ page }) => {
-    await gotoUsersPage(page)
-
-    const adminRow = page
-      .getByRole('row')
-      .filter({ hasText: process.env.SEED_ADMIN_EMAIL! })
-
-    await expect(adminRow).toBeVisible()
-
-    const badge = adminRow.locator('span').filter({ hasText: 'admin' })
-    await expect(badge).toBeVisible()
-    await expect(badge).toHaveClass(/bg-purple-50/)
-  })
-
-  test('seeded agent user appears with a gray agent badge', async ({ page }) => {
-    await gotoUsersPage(page)
-
-    const agentRow = page
-      .getByRole('row')
-      .filter({ hasText: process.env.SEED_AGENT_EMAIL! })
-
-    await expect(agentRow).toBeVisible()
-
-    const badge = agentRow.locator('span').filter({ hasText: 'agent' })
-    await expect(badge).toBeVisible()
-    await expect(badge).toHaveClass(/bg-gray-100/)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Create — open modal, fill form, assert new row appears
 // ---------------------------------------------------------------------------
 

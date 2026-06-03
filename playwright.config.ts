@@ -97,7 +97,17 @@ export default defineConfig({
     },
 
     // ------------------------------------------------------------------
-    // 6. General chromium project — picks up any spec not matched above
+    // 6. Ticket detail tests — detail page rendering + reply flow
+    // ------------------------------------------------------------------
+    {
+      name: 'ticket-detail',
+      testMatch: /ticket-detail\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+    },
+
+    // ------------------------------------------------------------------
+    // 7. General chromium project — picks up any spec not matched above
     // ------------------------------------------------------------------
     {
       name: 'chromium',
@@ -108,6 +118,7 @@ export default defineConfig({
         /protected-route\.spec\.ts/,
         /logout\.spec\.ts/,
         /tickets\.spec\.ts/,
+        /ticket-detail\.spec\.ts/,
       ],
       dependencies: ['setup'],
     },
