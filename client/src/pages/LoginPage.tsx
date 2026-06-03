@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useNavigate } from 'react-router'
@@ -23,6 +24,11 @@ type FormValues = z.infer<typeof schema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { data: session } = authClient.useSession()
+
+  useEffect(() => {
+    if (session) navigate('/', { replace: true })
+  }, [session, navigate])
 
   const {
     register,
@@ -42,10 +48,7 @@ export function LoginPage() {
 
     if (error) {
       setError('root', { message: error.message ?? 'Invalid email or password.' })
-      return
     }
-
-    navigate('/')
   }
 
   return (
