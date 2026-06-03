@@ -69,6 +69,73 @@ function SkeletonDetail() {
   )
 }
 
+function StatusSelect({ ticketId, currentStatus }: { ticketId: number; currentStatus: TicketDetail['status'] }) {
+  const queryClient = useQueryClient()
+  const [error, setError] = useState<string | null>(null)
+
+  const { mutate: updateStatus, isPending } = useMutation({
+    mutationFn: (status: string) =>
+      axios.patch(`/api/tickets/${ticketId}/status`, { status }, { withCredentials: true }),
+    onSuccess: () => {
+      setError(null)
+      queryClient.invalidateQueries({ queryKey: ['ticket', String(ticketId)] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    },
+    onError: (err) => setError(axiosError(err, 'Failed to update status')),
+  })
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Status</p>
+      <select
+        disabled={isPending}
+        value={currentStatus}
+        onChange={(e) => updateStatus(e.target.value)}
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
+      >
+        <option value="open">Open</option>
+        <option value="resolved">Resolved</option>
+        <option value="closed">Closed</option>
+      </select>
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  )
+}
+
+function CategorySelect({ ticketId, currentCategory }: { ticketId: number; currentCategory: TicketDetail['category'] }) {
+  const queryClient = useQueryClient()
+  const [error, setError] = useState<string | null>(null)
+
+  const { mutate: updateCategory, isPending } = useMutation({
+    mutationFn: (category: string | null) =>
+      axios.patch(`/api/tickets/${ticketId}/category`, { category }, { withCredentials: true }),
+    onSuccess: () => {
+      setError(null)
+      queryClient.invalidateQueries({ queryKey: ['ticket', String(ticketId)] })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    },
+    onError: (err) => setError(axiosError(err, 'Failed to update category')),
+  })
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Category</p>
+      <select
+        disabled={isPending}
+        value={currentCategory ?? ''}
+        onChange={(e) => updateCategory(e.target.value || null)}
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
+      >
+        <option value="">None</option>
+        <option value="general">General</option>
+        <option value="technical">Technical</option>
+        <option value="refund">Refund</option>
+      </select>
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  )
+}
+
 type AgentSelectProps = {
   ticketId: number
   currentAgent: TicketDetail['assignedAgent']
@@ -292,6 +359,8 @@ export function TicketDetailPage() {
                     <p className="text-sm text-gray-700">{ticket.messages.length}</p>
                   </div>
                   <hr className="border-gray-100" />
+                  <StatusSelect ticketId={ticket.id} currentStatus={ticket.status} />
+                  <CategorySelect ticketId={ticket.id} currentCategory={ticket.category} />
                   <AgentSelect ticketId={ticket.id} currentAgent={ticket.assignedAgent} />
                 </CardContent>
               </Card>

@@ -177,4 +177,30 @@ router.patch('/:id/status', async (req, res) => {
   }
 })
 
+const categorySchema = z.object({
+  category: z.enum(['general', 'technical', 'refund']).nullable(),
+})
+
+router.patch('/:id/category', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const parsed = categorySchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid category') })
+
+  try {
+    const existing = await prisma.ticket.findUnique({ where: { id } })
+    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+
+    const ticket = await prisma.ticket.update({
+      where: { id },
+      data: { category: parsed.data.category },
+      select: { id: true, category: true },
+    })
+    return res.json(ticket)
+  } catch (err) {
+    console.error('Failed to update ticket category:', err)
+    return res.status(500).json({ error: 'Failed to update ticket' })
+  }
+})
+
 export default router

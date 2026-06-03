@@ -249,13 +249,130 @@ describe('TicketDetailPage', () => {
   })
 
   // ---------------------------------------------------------------------------
+  // StatusSelect (sidebar)
+  // ---------------------------------------------------------------------------
+
+  it('shows the current status as selected in the status dropdown', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Status').closest('div')!.querySelector('select') as HTMLSelectElement
+    expect(select.value).toBe('open')
+  })
+
+  it('offers all three status options', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Status').closest('div')!.querySelector('select')!
+    const values = Array.from(select.options).map((o) => o.value)
+    expect(values).toEqual(['open', 'resolved', 'closed'])
+  })
+
+  it('calls PATCH /api/tickets/:id/status when status is changed', async () => {
+    const patchSpy = vi.spyOn(axios, 'patch').mockResolvedValue({ data: {} })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Status').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: 'resolved' } })
+    await waitFor(() =>
+      expect(patchSpy).toHaveBeenCalledWith(
+        '/api/tickets/1/status',
+        { status: 'resolved' },
+        expect.objectContaining({ withCredentials: true }),
+      ),
+    )
+  })
+
+  it('shows an error when the status update fails', async () => {
+    const err = Object.assign(new Error('Server Error'), {
+      isAxiosError: true,
+      response: { data: { error: 'Failed to update status' } },
+    })
+    vi.spyOn(axios, 'patch').mockRejectedValue(err)
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Status').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: 'closed' } })
+    await waitFor(() => expect(screen.getByText('Failed to update status')).toBeInTheDocument())
+  })
+
+  // ---------------------------------------------------------------------------
+  // CategorySelect (sidebar)
+  // ---------------------------------------------------------------------------
+
+  it('shows the current category as selected in the category dropdown', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Category').closest('div')!.querySelector('select') as HTMLSelectElement
+    expect(select.value).toBe('technical')
+  })
+
+  it('shows "None" (empty value) when the ticket has no category', async () => {
+    mockGet({ category: null })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Category').closest('div')!.querySelector('select') as HTMLSelectElement
+    expect(select.value).toBe('')
+  })
+
+  it('offers all category options including None', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Category').closest('div')!.querySelector('select')!
+    const values = Array.from(select.options).map((o) => o.value)
+    expect(values).toEqual(['', 'general', 'technical', 'refund'])
+  })
+
+  it('calls PATCH /api/tickets/:id/category when category is changed', async () => {
+    const patchSpy = vi.spyOn(axios, 'patch').mockResolvedValue({ data: {} })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Category').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: 'refund' } })
+    await waitFor(() =>
+      expect(patchSpy).toHaveBeenCalledWith(
+        '/api/tickets/1/category',
+        { category: 'refund' },
+        expect.objectContaining({ withCredentials: true }),
+      ),
+    )
+  })
+
+  it('calls PATCH with null when "None" is selected', async () => {
+    const patchSpy = vi.spyOn(axios, 'patch').mockResolvedValue({ data: {} })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Category').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: '' } })
+    await waitFor(() =>
+      expect(patchSpy).toHaveBeenCalledWith(
+        '/api/tickets/1/category',
+        { category: null },
+        expect.objectContaining({ withCredentials: true }),
+      ),
+    )
+  })
+
+  it('shows an error when the category update fails', async () => {
+    const err = Object.assign(new Error('Server Error'), {
+      isAxiosError: true,
+      response: { data: { error: 'Failed to update category' } },
+    })
+    vi.spyOn(axios, 'patch').mockRejectedValue(err)
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
+    const select = screen.getByText('Category').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: 'general' } })
+    await waitFor(() => expect(screen.getByText('Failed to update category')).toBeInTheDocument())
+  })
+
+  // ---------------------------------------------------------------------------
   // AgentSelect (sidebar)
   // ---------------------------------------------------------------------------
 
   it('shows "Unassigned" as the selected option when no agent is assigned', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-    const select = screen.getByRole('combobox') as HTMLSelectElement
+    const select = screen.getByText('Assigned agent').closest('div')!.querySelector('select') as HTMLSelectElement
     expect(select.value).toBe('')
   })
 
@@ -264,7 +381,7 @@ describe('TicketDetailPage', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
     await waitFor(() => {
-      const select = screen.getByRole('combobox') as HTMLSelectElement
+      const select = screen.getByText('Assigned agent').closest('div')!.querySelector('select') as HTMLSelectElement
       expect(select.value).toBe('u1')
     })
   })
@@ -282,9 +399,8 @@ describe('TicketDetailPage', () => {
     const patchSpy = vi.spyOn(axios, 'patch').mockResolvedValue({ data: {} })
     renderPage()
     await waitFor(() => expect(screen.getByText('John Agent')).toBeInTheDocument())
-
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'u1' } })
-
+    const select = screen.getByText('Assigned agent').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: 'u1' } })
     await waitFor(() =>
       expect(patchSpy).toHaveBeenCalledWith(
         '/api/tickets/1/assign',
@@ -298,10 +414,9 @@ describe('TicketDetailPage', () => {
     mockGet({ assignedAgent: { id: 'u1', name: 'John Agent', email: 'john@agent.com' } })
     const patchSpy = vi.spyOn(axios, 'patch').mockResolvedValue({ data: {} })
     renderPage()
-    await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument())
-
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
-
+    await waitFor(() => expect(screen.getByText('Assigned agent')).toBeInTheDocument())
+    const select = screen.getByText('Assigned agent').closest('div')!.querySelector('select')!
+    fireEvent.change(select, { target: { value: '' } })
     await waitFor(() =>
       expect(patchSpy).toHaveBeenCalledWith(
         '/api/tickets/1/assign',
