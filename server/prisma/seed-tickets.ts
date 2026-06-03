@@ -129,14 +129,107 @@ const tickets = [
   { subject: 'Reseller asking about white-label options', status: 'closed',               category: 'general',   fromName: 'Dmitri Sobolevsky', fromEmail: 'dmitri.s@reseller.ru',    createdAt: daysAgo(53) },
 ] as const
 
+type MsgSpec = { direction: 'inbound' | 'outbound'; body: string; minutesAfter: number }
+
+// Messages keyed by ticket index (matches `tickets` array above).
+// Each conversation starts with the customer's opening message (inbound),
+// then alternates with agent replies (outbound).
+const threadsByIndex: Record<number, MsgSpec[]> = {
+  // "Login page returns 500 error after password reset" — technical/open
+  0: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'Hi, I just reset my password but every time I try to log in I get a 500 internal server error. I\'ve tried three times and it keeps failing. Could you please look into this urgently?' },
+    { direction: 'outbound', minutesAfter: 25,  body: 'Hi Amara, thanks for reaching out. I\'ve reproduced the issue — the password reset token is not being invalidated correctly, which causes the session creation to fail. I\'ve escalated this to our engineering team. As a temporary workaround, please try clearing your browser cache and cookies and attempt the login again.' },
+    { direction: 'inbound',  minutesAfter: 60,  body: 'I cleared the cache and cookies as you suggested, but I\'m still seeing the 500 error. Is there a way to clear the token manually on your end?' },
+    { direction: 'outbound', minutesAfter: 85,  body: 'Absolutely — I\'ve just manually invalidated the stale token from our side. Please try logging in again now. Let us know immediately if the error persists and we\'ll loop in the backend team directly.' },
+  ],
+  // "Two-factor authentication code not arriving via SMS" — technical/open
+  1: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'Hello, my two-factor authentication codes are no longer arriving via SMS. I\'ve double-checked that my phone number is correct in my profile and my carrier confirms there are no delivery issues on their end.' },
+    { direction: 'outbound', minutesAfter: 30,  body: 'Hi Jonas, thanks for the detail. We\'re currently experiencing intermittent delays with our SMS gateway provider for certain European carriers. As a reliable workaround, you can switch to an authenticator app (e.g. Google Authenticator or Authy) under Security → Two-Factor Authentication → Change method. Would you like step-by-step guidance?' },
+    { direction: 'inbound',  minutesAfter: 75,  body: 'I set up the authenticator app and that works fine. However, SMS should still be an option — it\'s what our team has been using for months. Is there an ETA on when the SMS provider issue will be resolved?' },
+    { direction: 'outbound', minutesAfter: 100, body: 'Completely understood, and I apologise for the disruption. Our provider has acknowledged the issue and expects a fix within 24–48 hours. I\'ve added your ticket to our monitoring list so you\'ll receive an update as soon as SMS delivery is restored for your region.' },
+  ],
+  // "API rate limit hit — getting 429 on every request" — technical/open
+  2: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'We\'re hitting 429 Too Many Requests on literally every API call even though our dashboard shows we\'re well under our monthly quota. This is blocking our entire production pipeline. Please help urgently.' },
+    { direction: 'outbound', minutesAfter: 20,  body: 'Hi Priya, I can see the issue. Your account\'s per-minute rate limit counter appears to have gotten out of sync after a backend deployment earlier today. I\'ve temporarily increased your burst limit by 5× while our infrastructure team investigates the root cause. Can you confirm requests are going through now?' },
+    { direction: 'inbound',  minutesAfter: 45,  body: 'Yes, requests are flowing again — thank you for the quick response! Is there an estimated time for a permanent fix? We\'d like to know before rolling back the burst limit.' },
+  ],
+  // "Date picker shows wrong month on initial render" — technical/resolved (index 13)
+  13: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'The date picker component always opens on the previous month instead of the current one. For example, today is in June but it opens in May. Very confusing for our customers who need to select today\'s date.' },
+    { direction: 'outbound', minutesAfter: 40,  body: 'Hi Raj, thanks for the clear description. We tracked this down to a UTC-offset bug in how we initialise the calendar — the component was subtracting the timezone offset from the current date before determining the display month. A fix has been deployed. Could you do a hard refresh and let us know if the picker now opens on the correct month?' },
+    { direction: 'inbound',  minutesAfter: 90,  body: 'Hard refreshed and yes — the calendar now opens on the correct month. Thank you for the speedy fix!' },
+    { direction: 'outbound', minutesAfter: 95,  body: 'Glad to hear it, Raj! I\'ve marked this ticket as resolved. Feel free to reopen it or start a new ticket if anything else comes up.' },
+  ],
+  // "Charged twice for the same invoice in March" — refund/open (index 28)
+  28: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'Hello, I was charged twice for my March invoice. My credit card statement shows two identical charges of $49.00 on March 15th, both described as "Helpdesk Pro Monthly". I need one of these refunded immediately.' },
+    { direction: 'outbound', minutesAfter: 35,  body: 'Hi David, I can confirm in our billing records that there are indeed two charges processed for your March invoice — this appears to be caused by a webhook retry that triggered a duplicate payment. I\'m initiating a full refund of $49.00 for the second charge right now. It will appear on your statement within 5–7 business days. The refund reference is RF-2024-0315-KIM.' },
+    { direction: 'inbound',  minutesAfter: 80,  body: 'Thank you for sorting this so quickly. I\'ll keep an eye on my statement. Should I contact you if it hasn\'t appeared after 7 days?' },
+    { direction: 'outbound', minutesAfter: 90,  body: 'Absolutely — if you don\'t see the refund within 7 business days please reply here with your card\'s last 4 digits and I\'ll escalate directly with our payment processor. We\'re also putting a fix in place to prevent duplicate webhook retries on future billing runs.' },
+  ],
+  // "Cancel subscription and refund remaining days" — refund/open (index 29)
+  29: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'Hi, I\'d like to cancel my subscription effective immediately. I still have 18 days left in my current billing cycle. I understand you offer pro-rated refunds — could you process one for the unused days?' },
+    { direction: 'outbound', minutesAfter: 50,  body: 'Hi Olivia, of course. I\'ve cancelled your subscription and I\'m processing a pro-rated refund for the 18 unused days. Based on your monthly rate of €24.90, that\'s a refund of €14.87. You\'ll see it on your card within 3–5 business days. Your data will remain accessible in read-only mode for 30 days if you\'d like to export anything.' },
+    { direction: 'inbound',  minutesAfter: 80,  body: 'That\'s perfect, thank you for making this so easy. I\'ll export my data before the 30 days are up.' },
+  ],
+  // "How do I transfer account ownership to a colleague?" — general/open (index 48)
+  48: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'Hi there! I need to transfer my account ownership to my colleague Sarah Odu (sarah.odu@ops.ng). She\'ll be taking over as the workspace admin. How do I do this?' },
+    { direction: 'outbound', minutesAfter: 20,  body: 'Hi James! You can transfer ownership from Settings → Team → Members. Find Sarah in the list, click the three-dot menu next to her name, and select "Make Owner". You\'ll be prompted to confirm. Note: once transferred, you\'ll be moved to a Member role — this action cannot be self-reversed. Is Sarah already a member of the workspace?' },
+    { direction: 'inbound',  minutesAfter: 55,  body: 'Thanks! Sarah is already a member but when I follow those steps the "Make Owner" option is greyed out. She\'s currently on the free tier — does she need to be on a paid plan first?' },
+    { direction: 'outbound', minutesAfter: 80,  body: 'Good catch — yes, ownership transfer requires the incoming owner to be on a paid plan. Once Sarah upgrades her account, the option will become active. If you\'d like, I can apply a one-month trial of the Pro plan to her account so you can complete the transfer straight away. Just let me know!' },
+  ],
+  // "Charged after account deletion request submitted" — refund/resolved (index 38)
+  38: [
+    { direction: 'inbound',  minutesAfter: 0,   body: 'I submitted an account deletion request on March 28th and received a confirmation email, but I was still charged $99 on April 1st. This is frustrating — I explicitly cancelled before the renewal date. I need a full refund.' },
+    { direction: 'outbound', minutesAfter: 45,  body: 'Hi Michael, I sincerely apologise for this. I can see your deletion request was received on March 28th; unfortunately our system processes billing 3 days in advance and the April 1st charge had already been queued before your request was picked up. This is clearly a failure on our part. I\'m issuing a full refund of $99.00 immediately — you should see it within 5 business days. I\'ve also expedited the account deletion.' },
+    { direction: 'inbound',  minutesAfter: 300, body: 'Thank you for acknowledging the error and acting so quickly. Refund received on my statement. This is now resolved as far as I\'m concerned.' },
+    { direction: 'outbound', minutesAfter: 310, body: 'I\'m glad it\'s sorted, Michael. Again, I apologise for the inconvenience. We\'re reviewing our deletion-and-billing workflow to ensure this can\'t happen again. Take care!' },
+  ],
+}
+
+function openingBody(subject: string, category: string | null): string {
+  const i = subject.length % 3
+  if (category === 'technical') {
+    return [
+      `Hi, I'm writing to report a technical issue: "${subject}". This is affecting my ability to use the platform and I haven't been able to resolve it on my own. Could you please look into this?`,
+      `Hello, I need help with the following problem: "${subject}". I've already tried the usual troubleshooting steps without success. Any guidance would be greatly appreciated.`,
+      `Hi there, I wanted to flag this bug I've encountered — "${subject}". Please let me know what additional information you need from my end to investigate.`,
+    ][i]
+  }
+  if (category === 'refund') {
+    return [
+      `Hi, I'm contacting you about a billing matter: "${subject}". Could you please review my account and help me get this resolved?`,
+      `Hello, I need assistance with the following billing issue: "${subject}". I'd appreciate it if you could look into this at your earliest convenience.`,
+      `Hi team, I'm reaching out regarding "${subject}". Please help me get this sorted as soon as possible.`,
+    ][i]
+  }
+  if (category === 'general') {
+    return [
+      `Hi, I have a question I was hoping you could help with: "${subject}". Please let me know what information you need from me.`,
+      `Hello, I'm reaching out regarding "${subject}". Any help you can provide would be much appreciated.`,
+      `Hi there, I wanted to get in touch about "${subject}". Looking forward to your response.`,
+    ][i]
+  }
+  return [
+    `Hi, I just wanted to bring this to your attention: "${subject}". Happy to provide more details if needed.`,
+    `Hello, I'm writing to flag the following: "${subject}". Please let me know if you can help.`,
+    `Hi there, I noticed something I thought you should know about: "${subject}". Let me know how to proceed.`,
+  ][i]
+}
+
 async function main() {
   console.log('Clearing existing tickets...')
   await prisma.ticketMessage.deleteMany()
   await prisma.ticket.deleteMany()
 
-  console.log('Seeding 100 tickets...')
+  console.log(`Seeding ${tickets.length} tickets with messages...`)
+  const created: { id: number; createdAt: Date; fromName: string; fromEmail: string }[] = []
   for (const t of tickets) {
-    await prisma.ticket.create({
+    const ticket = await prisma.ticket.create({
       data: {
         subject: t.subject,
         status: t.status,
@@ -145,10 +238,53 @@ async function main() {
         fromEmail: t.fromEmail,
         createdAt: t.createdAt,
       },
+      select: { id: true, createdAt: true, fromName: true, fromEmail: true },
     })
+    created.push(ticket)
   }
 
-  console.log(`Done — ${tickets.length} tickets created.`)
+  let totalMessages = 0
+  for (let idx = 0; idx < created.length; idx++) {
+    const ticket = created[idx]
+    const t = tickets[idx]
+    const thread = threadsByIndex[idx]
+
+    if (thread) {
+      // Use curated inbound messages for this ticket
+      for (let i = 0; i < thread.length; i++) {
+        const spec = thread[i]
+        if (spec.direction === 'outbound') continue
+        await prisma.ticketMessage.create({
+          data: {
+            ticketId: ticket.id,
+            messageId: `seed-${ticket.id}-${i}`,
+            direction: 'inbound',
+            fromName: ticket.fromName,
+            fromEmail: ticket.fromEmail,
+            body: spec.body,
+            createdAt: new Date(ticket.createdAt.getTime() + spec.minutesAfter * 60_000),
+          },
+        })
+        totalMessages++
+      }
+    } else {
+      // Generate a single opening message for every other ticket
+      await prisma.ticketMessage.create({
+        data: {
+          ticketId: ticket.id,
+          messageId: `seed-${ticket.id}-0`,
+          direction: 'inbound',
+          fromName: ticket.fromName,
+          fromEmail: ticket.fromEmail,
+          body: openingBody(t.subject, t.category),
+          createdAt: ticket.createdAt,
+        },
+      })
+      totalMessages++
+    }
+  }
+
+  console.log(`Done — ${tickets.length} tickets and ${totalMessages} messages created.`)
 }
 
 main()

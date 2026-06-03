@@ -24,6 +24,7 @@ export type Ticket = {
   createdAt: string
   updatedAt: string
   _count?: { messages: number }
+  assignedAgent: { id: string; name: string; email: string } | null
 }
 
 export type PaginatedTickets = {
@@ -47,6 +48,5 @@ export type TicketMessage = {
 }
 
 export type TicketDetail = Ticket & {
-  assignedAgent: { id: string; name: string; email: string } | null
   messages: TicketMessage[]
 }

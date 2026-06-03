@@ -47,6 +47,7 @@ router.get('/', async (req, res) => {
     createdAt: true,
     updatedAt: true,
     _count: { select: { messages: true } },
+    assignedAgent: { select: { id: true, name: true, email: true } },
   }
 
   try {

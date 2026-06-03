@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import {
   useReactTable,
@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { axiosError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { TicketStatus, TicketCategory, type Ticket, type PaginatedTickets } from '@/types/ticket'
+import type { User } from '@/types/user'
 
 function StatusBadge({ status }: { status: Ticket['status'] }) {
   const styles: Record<TicketStatus, string> = {
@@ -109,6 +110,45 @@ function Pagination({
   )
 }
 
+type InlineAgentSelectProps = {
+  ticketId: number
+  currentAgent: Ticket['assignedAgent']
+}
+
+function InlineAgentSelect({ ticketId, currentAgent }: InlineAgentSelectProps) {
+  const queryClient = useQueryClient()
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () =>
+      axios
+        .get<Pick<User, 'id' | 'name' | 'email'>[]>('/api/users/agents', { withCredentials: true })
+        .then((r) => r.data),
+  })
+
+  const { mutate: assign, isPending } = useMutation({
+    mutationFn: (agentId: string | null) =>
+      axios.patch(`/api/tickets/${ticketId}/assign`, { agentId }, { withCredentials: true }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+  })
+
+  return (
+    <select
+      disabled={isPending}
+      value={currentAgent?.id ?? ''}
+      onChange={(e) => assign(e.target.value || null)}
+      className="w-full max-w-[160px] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-200 disabled:opacity-50"
+    >
+      <option value="">Unassigned</option>
+      {agents.map((a) => (
+        <option key={a.id} value={a.id}>
+          {a.name}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 const STATUS_FILTERS = [
   { label: 'All', value: '' },
   { label: 'Open', value: TicketStatus.open },
@@ -124,7 +164,7 @@ const CATEGORY_FILTERS = [
   { label: 'Uncategorized', value: 'none' },
 ]
 
-const SKELETON_COLS = ['Subject', 'Sender', 'Category', 'Status', 'Date']
+const SKELETON_COLS = ['Subject', 'Sender', 'Category', 'Status', 'Assigned to', 'Date']
 
 const columnHelper = createColumnHelper<Ticket>()
 
@@ -160,6 +200,16 @@ const columns = [
     header: 'Status',
     enableSorting: false,
     cell: (info) => <StatusBadge status={info.getValue()} />,
+  }),
+  columnHelper.display({
+    id: 'assignedAgent',
+    header: 'Assigned to',
+    cell: (info) => (
+      <InlineAgentSelect
+        ticketId={info.row.original.id}
+        currentAgent={info.row.original.assignedAgent}
+      />
+    ),
   }),
   columnHelper.accessor('createdAt', {
     header: 'Date',
@@ -313,6 +363,7 @@ export function TicketsPage() {
                       <td className="px-6 py-4"><Skeleton className="h-4 w-36" /></td>
                       <td className="px-6 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
                       <td className="px-6 py-4"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-32 rounded-md" /></td>
                       <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
                     </tr>
                   ))}
@@ -354,7 +405,7 @@ export function TicketsPage() {
                   <tbody className="divide-y divide-gray-100">
                     {table.getRowModel().rows.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
+                        <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
                           No tickets yet
                         </td>
                       </tr>
