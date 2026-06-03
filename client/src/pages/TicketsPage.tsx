@@ -12,30 +12,11 @@ import {
 import { Navbar } from '../components/Navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
 import { axiosError } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { StatusBadge, CategoryBadge } from '@/components/ticket-badges'
 import { TicketStatus, TicketCategory, type Ticket, type PaginatedTickets } from '@/types/ticket'
 import type { User } from '@/types/user'
-
-function StatusBadge({ status }: { status: Ticket['status'] }) {
-  const styles: Record<TicketStatus, string> = {
-    [TicketStatus.open]: 'bg-blue-50 text-blue-700 ring-blue-700/10',
-    [TicketStatus.resolved]: 'bg-green-50 text-green-700 ring-green-700/10',
-    [TicketStatus.closed]: 'bg-gray-100 text-gray-600 ring-gray-500/10',
-  }
-  return <Badge className={styles[status]}>{status}</Badge>
-}
-
-function CategoryBadge({ category }: { category: Ticket['category'] }) {
-  if (!category) return <span className="text-xs text-gray-400">—</span>
-  const styles: Record<TicketCategory, string> = {
-    [TicketCategory.general]: 'bg-gray-100 text-gray-600 ring-gray-500/10',
-    [TicketCategory.technical]: 'bg-purple-50 text-purple-700 ring-purple-700/10',
-    [TicketCategory.refund]: 'bg-amber-50 text-amber-700 ring-amber-700/10',
-  }
-  return <Badge className={styles[category]}>{category}</Badge>
-}
 
 function Pagination({
   page,
@@ -194,7 +175,12 @@ const columns = [
   columnHelper.accessor('category', {
     header: 'Category',
     enableSorting: false,
-    cell: (info) => <CategoryBadge category={info.getValue()} />,
+    cell: (info) => {
+      const cat = info.getValue()
+      return cat
+        ? <CategoryBadge category={cat} />
+        : <span className="text-xs text-gray-400">—</span>
+    },
   }),
   columnHelper.accessor('status', {
     header: 'Status',

@@ -40,6 +40,7 @@ export type TicketMessage = {
   ticketId: number
   messageId: string
   direction: 'inbound' | 'outbound'
+  senderType: 'customer' | 'agent'
   fromEmail: string
   fromName: string
   body: string

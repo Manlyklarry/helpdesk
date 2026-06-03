@@ -55,6 +55,7 @@ router.post('/email', async (req, res) => {
               ticketId: parentMessage.ticketId,
               messageId,
               direction: 'inbound',
+              senderType: 'customer',
               fromEmail,
               fromName,
               body: text,
@@ -81,6 +82,7 @@ router.post('/email', async (req, res) => {
           create: {
             messageId,
             direction: 'inbound',
+            senderType: 'customer',
             fromEmail,
             fromName,
             body: text,

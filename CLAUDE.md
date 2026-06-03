@@ -87,6 +87,31 @@ bun run dev
 
 The Vite dev server proxies all `/api/*` requests to the Express server — no CORS issues in development.
 
+## Dev Server Auto-Refresh
+
+`bun run dev` starts both servers concurrently via `dev.ts`:
+
+| Layer | Mechanism | Behaviour |
+|-------|-----------|-----------|
+| Client (Vite) | HMR | Browser updates instantly on save — no page reload for most changes |
+| Server (bun --watch) | File watcher | Full process restart on any change under `server/src/` |
+| Prisma schema | `dev.ts` fs.watch | `dev.ts` watches `server/prisma/*.prisma`; when the file changes (e.g. after a migration), it kills and restarts the server so `prisma generate` re-runs automatically |
+
+After running `prisma migrate dev`, the server restarts on its own — no manual restart needed.
+
+## Cross-layer Consistency
+
+When a change spans more than one layer, always propagate it completely before stopping work:
+
+| Change | What else must be updated |
+|--------|--------------------------|
+| Prisma schema field added / renamed / removed | Migration SQL → `prisma generate` → server route(s) that read/write that field → `client/src/types/` → any page/component that uses the type → test fixtures |
+| New or changed API route / response shape | `client/src/types/` → page `useQuery` / `useMutation` → test mocks |
+| Client type changed | All pages and components that reference it → test mocks |
+| New shared utility | Replace every inline use of the pattern with the utility → add to the utilities table in CLAUDE.md |
+
+Never leave a layer out of sync — e.g. do not add a schema field without updating the corresponding TypeScript type, or add a server route without updating the client query.
+
 ## E2E Testing
 
 Playwright is configured at the project root with an isolated `helpdesk_test` PostgreSQL database.
@@ -220,6 +245,38 @@ All client-side API calls use **Axios** + **TanStack Query v5**. Never use `fetc
 - The `QueryClientProvider` is mounted in `client/src/main.tsx` — do not add additional providers
 - Extract axios error messages with the shared helper: `import { axiosError } from '@/lib/api'` → `axiosError(err, 'fallback message')`. Never inline the 3-line extraction pattern.
 
+## Shared Utilities
+
+### Client
+
+| Export | File | Purpose |
+|--------|------|---------|
+| `axiosError(err, fallback)` | `client/src/lib/api.ts` | Extract a human-readable message from an Axios error; falls back to the second argument |
+| `makeZodResolver(schema)` | `client/src/lib/form.ts` | Wrap a Zod schema as a react-hook-form `Resolver`; avoids Vite `instanceof` issues |
+| `cn(...classes)` | `client/src/lib/utils.ts` | Merge Tailwind class names (clsx + tailwind-merge) |
+| `StatusBadge` | `client/src/components/ticket-badges.tsx` | Badge component for ticket status (open/resolved/closed) |
+| `CategoryBadge` | `client/src/components/ticket-badges.tsx` | Badge component for ticket category (general/technical/refund); caller handles the `null` case |
+| `useTicketPatch<T>(mutationFn, invalidate, fallback)` | `client/src/hooks/useTicketPatch.ts` | Mutation hook for sidebar ticket field updates — manages error state, clears on success, invalidates the supplied query keys |
+
+**Rules:**
+- Always use `axiosError` to extract error messages — never inline the 3-line Axios error extraction pattern
+- Always use `makeZodResolver` for react-hook-form schemas — never inline the resolver function
+- Import `StatusBadge` / `CategoryBadge` from `ticket-badges.tsx` — never redefine them locally in a page
+- Use `useTicketPatch` for any sidebar PATCH mutation — never duplicate the `useState(error)` + `useMutation` + `invalidateQueries` pattern
+
+### Server
+
+| Export | File | Purpose |
+|--------|------|---------|
+| `parseIntParam(value)` | `server/src/lib/http.ts` | Parse a route param to `number`, returns `null` on failure; use in every `/:id` handler |
+| `firstZodError(err, fallback?)` | `server/src/lib/zod.ts` | Return the first Zod issue message; use after every `schema.safeParse` failure |
+| `findTicketOr404(id, res)` | local helper in `server/src/routes/tickets.ts` | Looks up a ticket by ID; writes a 404 response and returns `false` if not found — use in every handler that needs to guard on ticket existence |
+
+**Rules:**
+- Always use `parseIntParam` for integer route params — never inline `parseInt` + `isNaN`
+- Always use `firstZodError` for Zod validation errors — never inline `err.issues[0]?.message`
+- Always use `findTicketOr404` before operating on a ticket — never inline the `findUnique + if (!existing) 404` pattern
+
 ## Loading States
 
 Always use the `Skeleton` component (`client/src/components/ui/skeleton.tsx`) for loading states — never use spinner text like "Loading…".
@@ -319,6 +376,7 @@ vi.spyOn(axios, 'get').mockRejectedValue(err)
 
 ## Key Conventions
 
+- **Cross-layer changes must be fully propagated** — see the Cross-layer Consistency table above. Never leave schema, routes, types, UI, and tests out of sync.
 - All API routes are prefixed `/api/`
 - Server runs TypeScript natively via Bun — no compile step in development
 - Tailwind v4 is configured via the `@tailwindcss/vite` plugin — no `tailwind.config.js`

@@ -1,9 +1,19 @@
-import { Router } from 'express'
+import { Router, type Response } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/db.js'
 import { firstZodError } from '../lib/zod.js'
+import { parseIntParam } from '../lib/http.js'
 
 const router = Router()
+
+async function findTicketOr404(id: number, res: Response): Promise<boolean> {
+  const ticket = await prisma.ticket.findUnique({ where: { id } })
+  if (!ticket) {
+    res.status(404).json({ error: 'Ticket not found' })
+    return false
+  }
+  return true
+}
 
 const SORTABLE_FIELDS = ['createdAt', 'subject', 'fromName', 'status', 'category'] as const
 
@@ -69,8 +79,8 @@ router.get('/', async (req, res) => {
 })
 
 router.get('/:id', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
   try {
     const ticket = await prisma.ticket.findUnique({
       where: { id },
@@ -92,14 +102,13 @@ const assignSchema = z.object({
 })
 
 router.patch('/:id/assign', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
   const parsed = assignSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid agent ID') })
 
   try {
-    const existing = await prisma.ticket.findUnique({ where: { id } })
-    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+    if (!await findTicketOr404(id, res)) return
 
     if (parsed.data.agentId !== null) {
       const agent = await prisma.user.findUnique({ where: { id: parsed.data.agentId, deletedAt: null } })
@@ -123,22 +132,22 @@ const replySchema = z.object({
 })
 
 router.post('/:id/messages', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
   const parsed = replySchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid reply') })
 
   const agent = req.user!
 
   try {
-    const existing = await prisma.ticket.findUnique({ where: { id } })
-    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+    if (!await findTicketOr404(id, res)) return
 
     const message = await prisma.ticketMessage.create({
       data: {
         ticketId: id,
         messageId: `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         direction: 'outbound',
+        senderType: 'agent',
         fromEmail: agent.email,
         fromName: agent.name,
         body: parsed.data.body,
@@ -156,14 +165,13 @@ const statusSchema = z.object({
 })
 
 router.patch('/:id/status', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
   const parsed = statusSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid status') })
 
   try {
-    const existing = await prisma.ticket.findUnique({ where: { id } })
-    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+    if (!await findTicketOr404(id, res)) return
 
     const ticket = await prisma.ticket.update({
       where: { id },
@@ -182,14 +190,13 @@ const categorySchema = z.object({
 })
 
 router.patch('/:id/category', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
   const parsed = categorySchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid category') })
 
   try {
-    const existing = await prisma.ticket.findUnique({ where: { id } })
-    if (!existing) return res.status(404).json({ error: 'Ticket not found' })
+    if (!await findTicketOr404(id, res)) return
 
     const ticket = await prisma.ticket.update({
       where: { id },

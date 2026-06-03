@@ -76,6 +76,11 @@ enum TicketCategory {
   refund
 }
 
+enum SenderType {
+  customer
+  agent
+}
+
 model Ticket {
   id              Int             @id @default(autoincrement())
   subject         String
@@ -94,9 +99,10 @@ model TicketMessage {
   id        Int      @id @default(autoincrement())
   ticketId  Int
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  messageId String   @unique
-  direction String
-  fromEmail String
+  messageId  String     @unique
+  direction  String
+  senderType SenderType
+  fromEmail  String
   fromName  String
   body      String
   htmlBody  String?

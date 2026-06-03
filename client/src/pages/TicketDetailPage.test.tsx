@@ -26,6 +26,7 @@ const MOCK_MESSAGES = [
     ticketId: 1,
     messageId: 'msg-1',
     direction: 'inbound' as const,
+    senderType: 'customer' as const,
     fromEmail: 'alice@example.com',
     fromName: 'Alice Johnson',
     body: 'Hi, I need help with my login page.',
@@ -37,6 +38,7 @@ const MOCK_MESSAGES = [
     ticketId: 1,
     messageId: 'msg-2',
     direction: 'outbound' as const,
+    senderType: 'agent' as const,
     fromEmail: 'agent@helpdesk.com',
     fromName: 'Support Agent',
     body: 'Hello! I will look into this for you right away.',
@@ -427,70 +429,14 @@ describe('TicketDetailPage', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // ReplyBox
+  // ReplyBox (integration — behaviour tested in ReplyBox.test.tsx)
   // ---------------------------------------------------------------------------
 
-  it('disables the send button when the reply textarea is empty', async () => {
+  it('renders the reply form below the message thread', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Send reply' })).toBeDisabled()
-  })
-
-  it('enables the send button once text is typed', async () => {
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
-      target: { value: 'Here is my reply.' },
-    })
-    expect(screen.getByRole('button', { name: 'Send reply' })).not.toBeDisabled()
-  })
-
-  it('calls POST /api/tickets/:id/messages when the send button is clicked', async () => {
-    const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({ data: { id: 99 } })
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-
-    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
-      target: { value: 'Here is my reply.' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Send reply' }))
-
-    await waitFor(() =>
-      expect(postSpy).toHaveBeenCalledWith(
-        '/api/tickets/1/messages',
-        { body: 'Here is my reply.' },
-        expect.objectContaining({ withCredentials: true }),
-      ),
-    )
-  })
-
-  it('clears the textarea after a successful send', async () => {
-    vi.spyOn(axios, 'post').mockResolvedValue({ data: { id: 99 } })
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-
-    const textarea = screen.getByPlaceholderText('Type your reply…') as HTMLTextAreaElement
-    fireEvent.change(textarea, { target: { value: 'Here is my reply.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Send reply' }))
-
-    await waitFor(() => expect(textarea.value).toBe(''))
-  })
-
-  it('shows an error message when the send fails', async () => {
-    const err = Object.assign(new Error('Bad Request'), {
-      isAxiosError: true,
-      response: { data: { error: 'Reply cannot be empty' } },
-    })
-    vi.spyOn(axios, 'post').mockRejectedValue(err)
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Login page not loading')).toBeInTheDocument())
-
-    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
-      target: { value: 'test' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Send reply' }))
-
-    await waitFor(() => expect(screen.getByText('Reply cannot be empty')).toBeInTheDocument())
+    expect(screen.getByPlaceholderText('Type your reply…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send reply' })).toBeInTheDocument()
   })
 
   // ---------------------------------------------------------------------------
