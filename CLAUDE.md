@@ -265,12 +265,14 @@ All client-side API calls use **Axios** + **TanStack Query v5**. Never use `fetc
 | `StatusBadge` | `client/src/components/ticket-badges.tsx` | Badge component for ticket status (open/resolved/closed) |
 | `CategoryBadge` | `client/src/components/ticket-badges.tsx` | Badge component for ticket category (general/technical/refund); caller handles the `null` case |
 | `useTicketPatch<T>(mutationFn, invalidate, fallback)` | `client/src/hooks/useTicketPatch.ts` | Mutation hook for sidebar ticket field updates — manages error state, clears on success, invalidates the supplied query keys |
+| `usePolishReply(ticketId, onPolished)` | `client/src/hooks/usePolishReply.ts` | Mutation hook for the Polish button — calls `POST /api/tickets/:id/polish-reply`, invokes `onPolished(text)` on success, manages its own error state; returns `{ polish(body), isPolishing, error }` |
 
 **Rules:**
 - Always use `axiosError` to extract error messages — never inline the 3-line Axios error extraction pattern
 - Always use `makeZodResolver` for react-hook-form schemas — never inline the resolver function
 - Import `StatusBadge` / `CategoryBadge` from `ticket-badges.tsx` — never redefine them locally in a page
 - Use `useTicketPatch` for any sidebar PATCH mutation — never duplicate the `useState(error)` + `useMutation` + `invalidateQueries` pattern
+- Use `usePolishReply` for the polish reply action — never inline the polish mutation in a component
 
 ### Server
 

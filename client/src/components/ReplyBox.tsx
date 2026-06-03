@@ -2,6 +2,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { axiosError } from '@/lib/api'
+import { usePolishReply } from '@/hooks/usePolishReply'
 
 type ReplyBoxProps = {
   ticketId: number
@@ -10,18 +11,22 @@ type ReplyBoxProps = {
 export function ReplyBox({ ticketId }: ReplyBoxProps) {
   const queryClient = useQueryClient()
   const [body, setBody] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   const { mutate: sendReply, isPending } = useMutation({
     mutationFn: () =>
       axios.post(`/api/tickets/${ticketId}/messages`, { body }, { withCredentials: true }),
     onSuccess: () => {
       setBody('')
-      setError(null)
+      setSendError(null)
       queryClient.invalidateQueries({ queryKey: ['ticket', String(ticketId)] })
     },
-    onError: (err) => setError(axiosError(err, 'Failed to send reply')),
+    onError: (err) => setSendError(axiosError(err, 'Failed to send reply')),
   })
+
+  const { polish, isPolishing, error: polishError } = usePolishReply(ticketId, setBody)
+
+  const error = sendError ?? polishError
 
   return (
     <div className="mt-8">
@@ -40,13 +45,22 @@ export function ReplyBox({ ticketId }: ReplyBoxProps) {
           ) : (
             <span />
           )}
-          <button
-            onClick={() => sendReply()}
-            disabled={isPending || !body.trim()}
-            className="px-4 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending ? 'Sending…' : 'Send reply'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => polish(body)}
+              disabled={isPolishing || isPending || !body.trim()}
+              className="px-4 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {isPolishing ? 'Polishing…' : '✨ Polish'}
+            </button>
+            <button
+              onClick={() => sendReply()}
+              disabled={isPending || isPolishing || !body.trim()}
+              className="px-4 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {isPending ? 'Sending…' : 'Send reply'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -64,3 +64,7 @@ export type TicketDetail = Ticket & {
   bodyHtml: string | null
   messages: TicketMessage[]
 }
+
+export type PolishReplyResponse = {
+  polished: string
+}

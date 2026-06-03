@@ -1,5 +1,7 @@
 import { Router, type Response } from 'express'
 import { z } from 'zod'
+import { generateText } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { prisma } from '../lib/db.js'
 import { firstZodError } from '../lib/zod.js'
 import { parseIntParam } from '../lib/http.js'
@@ -157,6 +159,37 @@ router.post('/:id/messages', async (req, res) => {
   } catch (err) {
     console.error('Failed to add reply:', err)
     return res.status(500).json({ error: 'Failed to send reply' })
+  }
+})
+
+router.post('/:id/polish-reply', async (req, res) => {
+  const id = parseIntParam(req.params.id)
+  if (id === null) return res.status(400).json({ error: 'Invalid ticket ID' })
+  const parsed = replySchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: firstZodError(parsed.error, 'Invalid body') })
+
+  try {
+    const ticket = await prisma.ticket.findUnique({ where: { id }, select: { fromName: true } })
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
+
+    const agent = req.user!
+    const customerFirstName = ticket.fromName.split(' ')[0]
+
+    const { text } = await generateText({
+      model: openai('gpt-5-nano'),
+      system: [
+        'You are a professional customer support agent at LarryDevLabs (larrydevlabs.com).',
+        'Improve the following reply to be clear, concise, and professional while preserving the original intent.',
+        `Address the customer by their first name: ${customerFirstName}.`,
+        `Sign off with the agent name "${agent.name}" and include larrydevlabs.com in the signature.`,
+        'Return only the improved reply text — no extra commentary.',
+      ].join(' '),
+      prompt: parsed.data.body,
+    })
+    return res.json({ polished: text })
+  } catch (err) {
+    console.error('Failed to polish reply:', err)
+    return res.status(500).json({ error: 'Failed to polish reply' })
   }
 })
 

@@ -208,3 +208,156 @@ describe('ReplyBox', () => {
     )
   })
 })
+
+// ---------------------------------------------------------------------------
+// Polish feature
+// ---------------------------------------------------------------------------
+
+describe('ReplyBox — Polish', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  // Disabled / enabled states
+
+  it('renders the Polish button', () => {
+    renderReplyBox()
+    expect(screen.getByRole('button', { name: '✨ Polish' })).toBeInTheDocument()
+  })
+
+  it('disables the Polish button when the textarea is empty', () => {
+    renderReplyBox()
+    expect(screen.getByRole('button', { name: '✨ Polish' })).toBeDisabled()
+  })
+
+  it('enables the Polish button once non-whitespace text is typed', () => {
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'draft reply' },
+    })
+    expect(screen.getByRole('button', { name: '✨ Polish' })).not.toBeDisabled()
+  })
+
+  it('keeps the Polish button disabled when textarea contains only whitespace', () => {
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: '   ' },
+    })
+    expect(screen.getByRole('button', { name: '✨ Polish' })).toBeDisabled()
+  })
+
+  // In-flight state
+
+  it('shows "Polishing…" while the request is in-flight', async () => {
+    vi.spyOn(axios, 'post').mockReturnValue(new Promise(() => {}))
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'draft' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Polishing…' })).toBeInTheDocument(),
+    )
+  })
+
+  it('disables Send reply while polishing', async () => {
+    vi.spyOn(axios, 'post').mockReturnValue(new Promise(() => {}))
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'draft' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Polishing…' })).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: 'Send reply' })).toBeDisabled()
+  })
+
+  // Success behaviour
+
+  it('POSTs to /api/tickets/:id/polish-reply with the current body', async () => {
+    const spy = vi.spyOn(axios, 'post').mockResolvedValue({ data: { polished: 'improved' } })
+    renderReplyBox(42)
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'my draft' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith(
+        '/api/tickets/42/polish-reply',
+        { body: 'my draft' },
+        expect.objectContaining({ withCredentials: true }),
+      ),
+    )
+  })
+
+  it('replaces the textarea content with the polished text on success', async () => {
+    vi.spyOn(axios, 'post').mockResolvedValue({ data: { polished: 'Improved reply text' } })
+    renderReplyBox()
+    const textarea = screen.getByPlaceholderText('Type your reply…') as HTMLTextAreaElement
+    fireEvent.change(textarea, { target: { value: 'raw draft' } })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() => expect(textarea.value).toBe('Improved reply text'))
+  })
+
+  it('clears any existing error after a successful polish', async () => {
+    const spy = vi.spyOn(axios, 'post')
+    spy.mockRejectedValueOnce(new Error('network failure'))
+    spy.mockResolvedValueOnce({ data: { polished: 'all good' } })
+
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'draft' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.getByText('Failed to polish reply')).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.queryByText('Failed to polish reply')).not.toBeInTheDocument(),
+    )
+  })
+
+  // Error behaviour
+
+  it('shows the server error message on failure', async () => {
+    const err = Object.assign(new Error('server error'), {
+      isAxiosError: true,
+      response: { data: { error: 'AI service unavailable' } },
+    })
+    vi.spyOn(axios, 'post').mockRejectedValue(err)
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'draft' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.getByText('AI service unavailable')).toBeInTheDocument(),
+    )
+  })
+
+  it('shows a generic fallback error when the server provides no message', async () => {
+    vi.spyOn(axios, 'post').mockRejectedValue(new Error('Network Error'))
+    renderReplyBox()
+    fireEvent.change(screen.getByPlaceholderText('Type your reply…'), {
+      target: { value: 'draft' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.getByText('Failed to polish reply')).toBeInTheDocument(),
+    )
+  })
+
+  it('does not change the textarea content on failure', async () => {
+    vi.spyOn(axios, 'post').mockRejectedValue(new Error('oops'))
+    renderReplyBox()
+    const textarea = screen.getByPlaceholderText('Type your reply…') as HTMLTextAreaElement
+    fireEvent.change(textarea, { target: { value: 'original draft' } })
+    fireEvent.click(screen.getByRole('button', { name: '✨ Polish' }))
+    await waitFor(() =>
+      expect(screen.getByText('Failed to polish reply')).toBeInTheDocument(),
+    )
+    expect(textarea.value).toBe('original draft')
+  })
+})
