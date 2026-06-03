@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import axios from 'axios'
+import { SenderType } from '@/types/ticket'
 import { TicketDetailPage } from './TicketDetailPage'
 
 vi.mock('../lib/auth-client', () => ({
@@ -26,7 +27,7 @@ const MOCK_MESSAGES = [
     ticketId: 1,
     messageId: 'msg-1',
     direction: 'inbound' as const,
-    senderType: 'customer' as const,
+    senderType: SenderType.customer,
     fromEmail: 'alice@example.com',
     fromName: 'Alice Johnson',
     body: 'Hi, I need help with my login page.',
@@ -38,7 +39,7 @@ const MOCK_MESSAGES = [
     ticketId: 1,
     messageId: 'msg-2',
     direction: 'outbound' as const,
-    senderType: 'agent' as const,
+    senderType: SenderType.agent,
     fromEmail: 'agent@helpdesk.com',
     fromName: 'Support Agent',
     body: 'Hello! I will look into this for you right away.',

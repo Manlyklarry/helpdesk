@@ -16,7 +16,7 @@ import { axiosError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { StatusBadge, CategoryBadge } from '@/components/ticket-badges'
 import { TicketStatus, TicketCategory, type Ticket, type PaginatedTickets } from '@/types/ticket'
-import type { User } from '@/types/user'
+import type { AgentSummary } from '@/types/user'
 
 function Pagination({
   page,
@@ -103,7 +103,7 @@ function InlineAgentSelect({ ticketId, currentAgent }: InlineAgentSelectProps) {
     queryKey: ['agents'],
     queryFn: () =>
       axios
-        .get<Pick<User, 'id' | 'name' | 'email'>[]>('/api/users/agents', { withCredentials: true })
+        .get<AgentSummary[]>('/api/users/agents', { withCredentials: true })
         .then((r) => r.data),
   })
 

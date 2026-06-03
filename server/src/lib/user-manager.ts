@@ -1,7 +1,15 @@
+import type { Role } from '@prisma/client'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { hashPassword } from 'better-auth/crypto'
 import { prisma } from './db.js'
+
+export type UpdateUserData = {
+  name: string
+  email: string
+  role: Role
+  password?: string
+}
 
 const signUpAuth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -14,7 +22,7 @@ export async function createUser(
   name: string,
   email: string,
   password: string,
-  role: 'admin' | 'agent' = 'agent',
+  role: Role = 'agent',
 ) {
   await signUpAuth.api.signUpEmail({ body: { name, email, password } })
   return prisma.user.update({
@@ -33,10 +41,7 @@ export async function deleteUser(id: string) {
   })
 }
 
-export async function updateUser(
-  id: string,
-  data: { name: string; email: string; role: 'admin' | 'agent'; password?: string },
-) {
+export async function updateUser(id: string, data: UpdateUserData) {
   if (data.password) {
     const hashed = await hashPassword(data.password)
     await prisma.account.updateMany({

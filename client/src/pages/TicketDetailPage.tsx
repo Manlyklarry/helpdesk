@@ -8,8 +8,8 @@ import { axiosError } from '@/lib/api'
 import { StatusBadge, CategoryBadge } from '@/components/ticket-badges'
 import { ReplyBox } from '@/components/ReplyBox'
 import { useTicketPatch } from '@/hooks/useTicketPatch'
-import { type TicketDetail } from '@/types/ticket'
-import type { User } from '@/types/user'
+import { SenderType, type TicketDetail } from '@/types/ticket'
+import type { AgentSummary } from '@/types/user'
 
 function SkeletonDetail() {
   return (
@@ -126,7 +126,7 @@ function AgentSelect({ ticketId, currentAgent }: { ticketId: number; currentAgen
     queryKey: ['agents'],
     queryFn: () =>
       axios
-        .get<Pick<User, 'id' | 'name' | 'email'>[]>('/api/users/agents', { withCredentials: true })
+        .get<AgentSummary[]>('/api/users/agents', { withCredentials: true })
         .then((r) => r.data),
   })
   const { mutate: assign, isPending, error } = useTicketPatch(
@@ -215,7 +215,7 @@ export function TicketDetailPage() {
                   ticket.messages.map((msg) => (
                     <Card
                       key={msg.id}
-                      className={msg.senderType === 'agent' ? 'border-blue-100 bg-blue-50/30' : ''}
+                      className={msg.senderType === SenderType.agent ? 'border-blue-100 bg-blue-50/30' : ''}
                     >
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-3 gap-4">
@@ -226,12 +226,12 @@ export function TicketDetailPage() {
                           <div className="flex items-center gap-2 shrink-0">
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                msg.senderType === 'customer'
+                                msg.senderType === SenderType.customer
                                   ? 'bg-gray-100 text-gray-600'
                                   : 'bg-blue-100 text-blue-700'
                               }`}
                             >
-                              {msg.senderType === 'customer' ? 'Customer' : 'Agent'}
+                              {msg.senderType === SenderType.customer ? 'Customer' : 'Agent'}
                             </span>
                             <span className="text-xs text-gray-400">
                               {new Date(msg.createdAt).toLocaleString()}
