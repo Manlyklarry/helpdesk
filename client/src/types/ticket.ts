@@ -1,6 +1,8 @@
 import type { AgentSummary } from './user'
 
 export const TicketStatus = {
+  new: 'new',
+  processing: 'processing',
   open: 'open',
   resolved: 'resolved',
   closed: 'closed',
@@ -63,6 +65,7 @@ export type TicketMessage = {
 export type TicketDetail = Ticket & {
   body: string | null
   bodyHtml: string | null
+  resolvedByAi: boolean
   messages: TicketMessage[]
 }
 

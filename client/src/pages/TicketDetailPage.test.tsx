@@ -58,6 +58,7 @@ const MOCK_TICKET = {
   createdAt: '2024-01-15T10:00:00.000Z',
   updatedAt: '2024-01-15T12:00:00.000Z',
   assignedAgent: null,
+  resolvedByAi: false,
   messages: MOCK_MESSAGES,
 }
 

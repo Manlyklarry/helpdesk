@@ -195,8 +195,7 @@ export function TicketDetailPage() {
   })
 
   const errorMessage = error ? axiosError(error, 'Failed to load ticket') : null
-  const isNotFound =
-    error && (error as { response?: { status?: number } }).response?.status === 404
+  const isNotFound = axios.isAxiosError(error) && error.response?.status === 404
 
   return (
     <div className="min-h-screen bg-gray-50">
