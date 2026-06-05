@@ -4,6 +4,8 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './lib/auth.js'
+import { boss } from './lib/boss.js'
+import { startWorkers } from './lib/workers.js'
 import router from './routes/index.js'
 
 const app = express()
@@ -44,6 +46,17 @@ app.use(express.json())
 
 app.use('/api', router)
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`)
+boss.on('error', (err: Error) => console.error('[pg-boss]', err))
+
+async function main() {
+  await boss.start()
+  await startWorkers()
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`)
+  })
+}
+
+main().catch((err) => {
+  console.error('Failed to start server:', err)
+  process.exit(1)
 })

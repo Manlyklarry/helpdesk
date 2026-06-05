@@ -2,7 +2,8 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/db.js'
 import { sanitizeEmailHtml } from '../lib/sanitize.js'
-import { classifyTicket } from '../lib/ai.js'
+import { boss } from '../lib/boss.js'
+import { CLASSIFY_QUEUE } from '../lib/workers.js'
 
 const router = Router()
 
@@ -98,13 +99,7 @@ router.post('/email', async (req, res) => {
       select: { id: true },
     })
 
-    // Non-blocking: classify in the background after responding
-    classifyTicket(subject, text)
-      .then((category) => {
-        if (!category) return
-        return prisma.ticket.update({ where: { id: ticket.id }, data: { category } })
-      })
-      .catch((err) => console.error(`[classify] ticket #${ticket.id} failed:`, err))
+    await boss.send(CLASSIFY_QUEUE, { ticketId: ticket.id, subject, text: text.slice(0, 2_000) })
 
     return res.json({ ok: true })
   } catch (err) {
