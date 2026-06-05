@@ -65,6 +65,8 @@ model Verification {
 }
 
 enum TicketStatus {
+  new
+  processing
   open
   resolved
   closed
@@ -84,12 +86,13 @@ enum SenderType {
 model Ticket {
   id              Int             @id @default(autoincrement())
   subject         String
-  status          TicketStatus    @default(open)
+  status          TicketStatus    @default(new)
   category        TicketCategory?
   fromEmail       String
   fromName        String
   body            String?
   bodyHtml        String?
+  resolvedByAi    Boolean         @default(false)
   assignedAgentId String?
   assignedAgent   User?           @relation("AssignedTickets", fields: [assignedAgentId], references: [id], onDelete: SetNull)
   createdAt       DateTime        @default(now())

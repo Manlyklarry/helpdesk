@@ -36,8 +36,13 @@ router.get('/', async (req, res) => {
     ? result.data
     : { sortBy: 'createdAt' as const, sortDir: 'desc' as const, status: undefined, category: undefined, search: undefined, page: 1, pageSize: PAGE_SIZE }
 
+  const baseStatusFilter = status
+    ? { status }
+    : { status: { notIn: ['new' as const, 'processing' as const] } }
+
   const where = {
-    ...(status ? { status } : {}),
+    resolvedByAi: false,
+    ...baseStatusFilter,
     ...(category === 'none' ? { category: null } : category ? { category } : {}),
     ...(search ? {
       OR: [
@@ -141,7 +146,11 @@ router.post('/:id/messages', async (req, res) => {
   const agent = req.user!
 
   try {
-    if (!await findTicketOr404(id, res)) return
+    const ticket = await prisma.ticket.findUnique({ where: { id }, select: { fromName: true } })
+    if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
+
+    const customerFirstName = extractFirstName(ticket.fromName)
+    const body = await polishReply(parsed.data.body, customerFirstName)
 
     const message = await prisma.ticketMessage.create({
       data: {
@@ -151,7 +160,7 @@ router.post('/:id/messages', async (req, res) => {
         senderType: 'agent',
         fromEmail: agent.email,
         fromName: agent.name,
-        body: parsed.data.body,
+        body,
       },
     })
     return res.status(201).json(message)
@@ -171,9 +180,8 @@ router.post('/:id/polish-reply', async (req, res) => {
     const ticket = await prisma.ticket.findUnique({ where: { id }, select: { fromName: true } })
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
 
-    const agent = req.user!
     const customerFirstName = extractFirstName(ticket.fromName)
-    const polished = await polishReply(parsed.data.body, customerFirstName, agent.name)
+    const polished = await polishReply(parsed.data.body, customerFirstName)
     return res.json({ polished })
   } catch (err) {
     console.error('Failed to polish reply:', err)

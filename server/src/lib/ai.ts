@@ -10,21 +10,17 @@ export function extractFirstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0]
 }
 
-export async function polishReply(
-  body: string,
-  customerFirstName: string,
-  agentName: string,
-): Promise<string> {
+export async function polishReply(body: string, customerFirstName: string): Promise<string> {
   const { text } = await generateText({
     model,
     system: [
       'You are a professional customer support agent at LarryDevLabs (larrydevlabs.com).',
-      'Improve the following reply to be clear, concise, and professional while preserving the original intent.',
-      `Address the customer by their first name: ${customerFirstName}.`,
-      `Sign off with the agent name "${agentName}" and include larrydevlabs.com in the signature.`,
-      'Return only the improved reply text — no extra commentary.',
+      'Rewrite the following reply to be clear, concise, professional, and customer-friendly.',
+      'Use proper formatting: greet the customer by their first name at the start, use paragraphs or bullet points where appropriate, and end with a warm closing.',
+      `Always sign off as "LarryDevLabs Support Team" and include larrydevlabs.com in the signature.`,
+      'Preserve the original intent. Return only the improved reply — no extra commentary.',
     ].join(' '),
-    prompt: body,
+    prompt: `Customer first name: ${customerFirstName}\n\nDraft reply:\n${body}`,
   })
   return text
 }
@@ -48,6 +44,37 @@ export async function summarizeTicket(
     prompt: `Subject: ${subject}\n\nConversation:\n${thread}`,
   })
   return text
+}
+
+export async function autoResolveTicket(
+  subject: string,
+  body: string,
+  knowledgeBase: string,
+  customerFirstName: string,
+): Promise<{ canResolve: false } | { canResolve: true; reply: string }> {
+  const { text } = await generateText({
+    model,
+    system: [
+      'You are an AI support agent for LarryDevLabs (larrydevlabs.com).',
+      'Given a customer support ticket and the official support knowledge base, decide if you can fully resolve the ticket.',
+      'You CANNOT resolve if any escalation rule from the knowledge base applies (legal threats, refund outside 30 days, chargebacks, account security concerns, or low confidence).',
+      'You CANNOT resolve if the knowledge base does not cover the topic or the answer requires account-specific information.',
+      'If you CAN resolve: write a professional, helpful reply addressing the customer by their first name, based only on the knowledge base.',
+      `Sign off as "LarryDevLabs Support Team" and include larrydevlabs.com in the signature.`,
+      'Respond with valid JSON only — no markdown fences, no extra text.',
+      'Format: {"canResolve":true,"reply":"..."} or {"canResolve":false}',
+    ].join(' '),
+    prompt: `Knowledge Base:\n${knowledgeBase}\n\nTicket Subject: ${subject}\n\nCustomer (${customerFirstName}) wrote:\n${body.slice(0, 3_000)}`,
+  })
+  try {
+    const parsed = JSON.parse(text.trim()) as { canResolve: boolean; reply?: string }
+    if (parsed.canResolve === true && typeof parsed.reply === 'string' && parsed.reply.length > 0) {
+      return { canResolve: true, reply: parsed.reply }
+    }
+    return { canResolve: false }
+  } catch {
+    return { canResolve: false }
+  }
 }
 
 export async function classifyTicket(subject: string, body: string): Promise<Category | null> {

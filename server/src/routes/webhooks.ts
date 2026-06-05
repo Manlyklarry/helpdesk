@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/db.js'
 import { sanitizeEmailHtml } from '../lib/sanitize.js'
 import { boss } from '../lib/boss.js'
-import { CLASSIFY_QUEUE } from '../lib/workers.js'
+import { CLASSIFY_QUEUE, AUTO_RESOLVE_QUEUE } from '../lib/workers.js'
 
 const router = Router()
 
@@ -99,7 +99,10 @@ router.post('/email', async (req, res) => {
       select: { id: true },
     })
 
-    await boss.send(CLASSIFY_QUEUE, { ticketId: ticket.id, subject, text: text.slice(0, 2_000) })
+    await Promise.all([
+      boss.send(CLASSIFY_QUEUE, { ticketId: ticket.id, subject, text: text.slice(0, 2_000) }),
+      boss.send(AUTO_RESOLVE_QUEUE, { ticketId: ticket.id, subject, text, fromName, fromEmail }),
+    ])
 
     return res.json({ ok: true })
   } catch (err) {

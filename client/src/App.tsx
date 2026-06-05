@@ -14,9 +14,9 @@ function ProtectedRoute({
   children: React.ReactNode
   adminOnly?: boolean
 }) {
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session, isPending, error } = authClient.useSession()
 
-  if (isPending) {
+  if (isPending || error) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="border-b border-gray-200 bg-white h-16" />
