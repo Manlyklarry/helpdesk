@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '../src/lib/db.js'
+import { AI_AGENT_EMAIL } from '../src/lib/constants.js'
 
 if (process.env.NODE_ENV === 'production') {
   console.error('Seed script must not run in production')
@@ -62,6 +63,23 @@ async function seed(adminEmail: string, adminPassword: string) {
   // Seed agent user if credentials are provided
   if (agentEmail && agentPassword) {
     await upsertUser(agentEmail, agentPassword, 'Agent', 'agent')
+  }
+
+  // AI agent — system account used for auto-resolution assignment.
+  // Uses create-if-not-exists (not upsert) to preserve the user ID across
+  // seed runs so existing ticket FK references remain intact.
+  const existingAi = await prisma.user.findUnique({ where: { email: AI_AGENT_EMAIL } })
+  if (!existingAi) {
+    await seedAuth.api.signUpEmail({
+      body: { email: AI_AGENT_EMAIL, password: crypto.randomUUID(), name: 'AI' },
+    })
+    await prisma.user.update({
+      where: { email: AI_AGENT_EMAIL },
+      data: { role: 'agent' },
+    })
+    console.log(`AI agent seeded: ${AI_AGENT_EMAIL}`)
+  } else {
+    console.log(`AI agent already exists: ${AI_AGENT_EMAIL}`)
   }
 }
 

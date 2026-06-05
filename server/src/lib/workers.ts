@@ -4,14 +4,27 @@ import { type Job } from 'pg-boss'
 import { boss } from './boss.js'
 import { classifyTicket, autoResolveTicket, extractFirstName } from './ai.js'
 import { prisma } from './db.js'
+import { AI_AGENT_EMAIL } from './constants.js'
 
 export const CLASSIFY_QUEUE = 'classify-ticket'
 export const AUTO_RESOLVE_QUEUE = 'auto-resolve-ticket'
 
+let cachedAiAgentId: string | null | undefined = undefined
+
+export async function getAiAgentId(): Promise<string | null> {
+  if (cachedAiAgentId !== undefined) return cachedAiAgentId
+  const agent = await prisma.user.findFirst({
+    where: { email: AI_AGENT_EMAIL, deletedAt: null },
+    select: { id: true },
+  })
+  cachedAiAgentId = agent?.id ?? null
+  return cachedAiAgentId
+}
+
 const KB_PATH = join(import.meta.dirname, '../../knowledge-base.md')
 
 type ClassifyJobData = { ticketId: number; subject: string; text: string }
-type AutoResolveJobData = { ticketId: number; subject: string; text: string; fromName: string; fromEmail: string }
+type AutoResolveJobData = { ticketId: number; subject: string; text: string; fromName: string }
 
 export async function startWorkers() {
   await boss.createQueue(CLASSIFY_QUEUE)
@@ -27,7 +40,7 @@ export async function startWorkers() {
 
   await boss.work<AutoResolveJobData>(AUTO_RESOLVE_QUEUE, async (jobs: Job<AutoResolveJobData>[]) => {
     const job = jobs[0]
-    const { ticketId, subject, text, fromName, fromEmail } = job.data
+    const { ticketId, subject, text, fromName } = job.data
 
     await prisma.ticket.update({ where: { id: ticketId }, data: { status: 'processing' } })
 
@@ -56,11 +69,19 @@ export async function startWorkers() {
         ])
         console.log(`[auto-resolve] ticket #${ticketId} resolved by AI`)
       } else {
-        await prisma.ticket.update({ where: { id: ticketId }, data: { status: 'open' } })
+        // Unassign from AI agent so a human can pick it up
+        await prisma.ticket.update({
+          where: { id: ticketId },
+          data: { status: 'open', assignedAgentId: null },
+        })
         console.log(`[auto-resolve] ticket #${ticketId} could not be resolved by AI — moved to open`)
       }
     } catch (err) {
-      await prisma.ticket.update({ where: { id: ticketId }, data: { status: 'open' } })
+      // Error fallback: unassign so the ticket isn't stuck assigned to AI
+      await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { status: 'open', assignedAgentId: null },
+      })
       throw err
     }
   })

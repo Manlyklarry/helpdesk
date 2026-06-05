@@ -3,13 +3,9 @@ import { z } from 'zod'
 import { prisma } from '../lib/db.js'
 import { sanitizeEmailHtml } from '../lib/sanitize.js'
 import { boss } from '../lib/boss.js'
-import { CLASSIFY_QUEUE, AUTO_RESOLVE_QUEUE } from '../lib/workers.js'
+import { CLASSIFY_QUEUE, AUTO_RESOLVE_QUEUE, getAiAgentId } from '../lib/workers.js'
 
 const router = Router()
-
-// When a provider is chosen, set WEBHOOK_SECRET in .env and add signature
-// verification here before processing the payload.
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
 
 // Normalized inbound email payload — provider-agnostic.
 // When wiring up a real email provider, add an adapter route (e.g. /email/resend)
@@ -76,7 +72,9 @@ router.post('/email', async (req, res) => {
       }
     }
 
-    // New ticket
+    // New ticket — assign to AI agent immediately for auto-resolution
+    const aiAgentId = await getAiAgentId()
+
     const ticket = await prisma.ticket.create({
       data: {
         subject,
@@ -84,6 +82,7 @@ router.post('/email', async (req, res) => {
         fromName,
         body: text,
         bodyHtml: safeHtml,
+        assignedAgentId: aiAgentId,
         messages: {
           create: {
             messageId,
@@ -101,7 +100,7 @@ router.post('/email', async (req, res) => {
 
     await Promise.all([
       boss.send(CLASSIFY_QUEUE, { ticketId: ticket.id, subject, text: text.slice(0, 2_000) }),
-      boss.send(AUTO_RESOLVE_QUEUE, { ticketId: ticket.id, subject, text, fromName, fromEmail }),
+      boss.send(AUTO_RESOLVE_QUEUE, { ticketId: ticket.id, subject, text, fromName }),
     ])
 
     return res.json({ ok: true })

@@ -306,6 +306,11 @@ export function TicketDetailPage() {
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Messages</p>
                     <p className="text-sm text-gray-700">{ticket.messages.length}</p>
                   </div>
+                  {ticket.resolvedByAi && (
+                    <div className="flex items-center gap-1.5 rounded-lg bg-violet-50 px-3 py-2">
+                      <span className="text-xs font-medium text-violet-700">✦ Resolved by AI</span>
+                    </div>
+                  )}
                   <hr className="border-gray-100" />
                   <StatusSelect ticketId={ticket.id} currentStatus={ticket.status} />
                   <CategorySelect ticketId={ticket.id} currentCategory={ticket.category} />

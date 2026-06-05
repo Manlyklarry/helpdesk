@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import usersRouter from './users.js'
 import webhooksRouter from './webhooks.js'
 import ticketsRouter from './tickets.js'
+import dashboardRouter from './dashboard.js'
 
 const router = Router()
 
@@ -17,5 +18,6 @@ router.use(requireAuth)
 
 router.use('/users', usersRouter)
 router.use('/tickets', ticketsRouter)
+router.use('/dashboard', dashboardRouter)
 
 export default router
