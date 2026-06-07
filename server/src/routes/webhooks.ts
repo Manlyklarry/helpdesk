@@ -40,10 +40,16 @@ function parseHeaderValue(headers: string, name: string): string | undefined {
   return match?.[1]?.trim()
 }
 
-async function processInboundEmail(data: NormalizedEmail): Promise<void> {
+type ProcessOptions = {
+  /** Initial ticket status. Defaults to 'new' (full AI pipeline). Use 'open' to skip AI queuing. */
+  initialStatus?: 'new' | 'open'
+}
+
+async function processInboundEmail(data: NormalizedEmail, opts: ProcessOptions = {}): Promise<void> {
   const { from, subject, text, html, messageId, inReplyTo } = data
   const { fromName, fromEmail } = parseFrom(from)
   const safeHtml = html ? sanitizeEmailHtml(html) : undefined
+  const initialStatus = opts.initialStatus ?? 'new'
 
   if (inReplyTo) {
     const parentMessage = await prisma.ticketMessage.findUnique({
@@ -74,10 +80,11 @@ async function processInboundEmail(data: NormalizedEmail): Promise<void> {
     }
   }
 
-  const aiAgentId = await getAiAgentId()
+  const aiAgentId = initialStatus === 'new' ? await getAiAgentId() : null
   const ticket = await prisma.ticket.create({
     data: {
       subject,
+      status: initialStatus,
       fromEmail,
       fromName,
       body: text,
@@ -98,11 +105,30 @@ async function processInboundEmail(data: NormalizedEmail): Promise<void> {
     select: { id: true },
   })
 
-  await Promise.all([
-    boss.send(CLASSIFY_QUEUE, { ticketId: ticket.id, subject, text: text.slice(0, 2_000) }),
-    boss.send(AUTO_RESOLVE_QUEUE, { ticketId: ticket.id, subject, text, fromName }),
-  ])
+  if (initialStatus === 'new') {
+    await Promise.all([
+      boss.send(CLASSIFY_QUEUE, { ticketId: ticket.id, subject, text: text.slice(0, 2_000) }),
+      boss.send(AUTO_RESOLVE_QUEUE, { ticketId: ticket.id, subject, text, fromName }),
+    ])
+  }
 }
+
+// Normalised JSON webhook — accepts the schema directly (used by tests and non-SendGrid senders).
+// Creates tickets as 'open' immediately so they appear in the tickets list without waiting for
+// the AI pipeline that the /sendgrid endpoint triggers.
+router.post('/email', async (req, res) => {
+  const parsed = normalizedEmailSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(200).json({ ok: false, error: 'Invalid payload' })
+  }
+  try {
+    await processInboundEmail(parsed.data, { initialStatus: 'open' })
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('Failed to process inbound email:', err)
+    return res.status(500).json({ error: 'Failed to process email' })
+  }
+})
 
 // SendGrid Inbound Parse webhook
 router.post('/sendgrid', upload, async (req, res) => {

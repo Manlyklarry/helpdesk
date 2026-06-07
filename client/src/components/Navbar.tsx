@@ -1,13 +1,16 @@
 import { useNavigate, Link } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../lib/auth-client'
 import { Button } from '@/components/ui/button'
 
 export function Navbar() {
   const { data: session } = authClient.useSession()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const handleSignOut = async () => {
     await authClient.signOut()
+    queryClient.clear()
     navigate('/login')
   }
 

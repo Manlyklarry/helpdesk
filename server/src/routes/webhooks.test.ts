@@ -33,6 +33,7 @@ const { default: webhooksRouter } = await import('./webhooks.js')
 // ─── Test server ─────────────────────────────────────────────────────────────
 
 const app = express()
+app.use(express.json())
 app.use('/webhooks', webhooksRouter)
 
 let server: Server
@@ -251,6 +252,93 @@ describe('POST /webhooks/sendgrid — invalid payloads', () => {
     const body = await res.json() as { ok: boolean }
     expect(body.ok).toBe(false)
     expect(mockTicketCreate).not.toHaveBeenCalled()
+  })
+})
+
+// ─── POST /webhooks/email (JSON endpoint) ─────────────────────────────────────
+
+function postEmail(body: object) {
+  return fetch(`${base}/webhooks/email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+const validEmailPayload = {
+  from: 'Alice Test <alice@test.com>',
+  to: ['support@helpdesk.local'],
+  subject: 'Test email subject',
+  text: 'Test email body.',
+  messageId: 'email-json-001',
+}
+
+describe('POST /webhooks/email — new ticket', () => {
+  it('returns 200 { ok: true } for a valid payload', async () => {
+    mockTicketCreate.mockResolvedValue({ id: 300 })
+
+    const res = await postEmail(validEmailPayload)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+  })
+
+  it('creates the ticket with status "open"', async () => {
+    mockTicketCreate.mockResolvedValue({ id: 301 })
+
+    await postEmail(validEmailPayload)
+
+    const { data } = mockTicketCreate.mock.calls[0][0]
+    expect(data.status).toBe('open')
+  })
+
+  it('does not assign an AI agent or queue any jobs', async () => {
+    mockTicketCreate.mockResolvedValue({ id: 302 })
+
+    await postEmail(validEmailPayload)
+
+    expect(mockGetAiAgentId).not.toHaveBeenCalled()
+    expect(mockBossSend).not.toHaveBeenCalled()
+    const { data } = mockTicketCreate.mock.calls[0][0]
+    expect(data.assignedAgentId).toBeNull()
+  })
+
+  it('returns 200 { ok: false } for a missing messageId field', async () => {
+    const { messageId: _omit, ...noId } = validEmailPayload
+    const res = await postEmail(noId)
+    expect(res.status).toBe(200)
+    expect((await res.json() as { ok: boolean }).ok).toBe(false)
+    expect(mockTicketCreate).not.toHaveBeenCalled()
+  })
+
+  it('returns 200 { ok: false } for an empty body', async () => {
+    const res = await postEmail({})
+    expect(res.status).toBe(200)
+    expect((await res.json() as { ok: boolean }).ok).toBe(false)
+  })
+})
+
+describe('POST /webhooks/email — reply threading', () => {
+  it('appends to existing ticket when inReplyTo matches', async () => {
+    mockTicketMessageFindUnique.mockResolvedValue({ ticketId: 55 })
+    mockTicketMessageCreate.mockResolvedValue({})
+    mockTicketUpdate.mockResolvedValue({})
+    mockTransaction.mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops))
+
+    const res = await postEmail({ ...validEmailPayload, messageId: 'reply-json-001', inReplyTo: 'email-json-001' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(mockTicketCreate).not.toHaveBeenCalled()
+    expect(mockTransaction).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('POST /webhooks/email — database error', () => {
+  it('returns 500 when ticket creation throws', async () => {
+    mockTicketCreate.mockRejectedValue(new Error('DB error'))
+    const res = await postEmail(validEmailPayload)
+    expect(res.status).toBe(500)
+    const body = await res.json() as { error: string }
+    expect(body.error).toBe('Failed to process email')
   })
 })
 

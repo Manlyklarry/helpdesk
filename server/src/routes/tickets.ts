@@ -163,7 +163,10 @@ router.post('/:id/messages', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
 
     const customerFirstName = extractFirstName(ticket.fromName)
-    const body = await polishReply(parsed.data.body, customerFirstName)
+    const body = await Promise.race([
+      polishReply(parsed.data.body, customerFirstName).catch(() => parsed.data.body),
+      new Promise<string>((resolve) => setTimeout(() => resolve(parsed.data.body), 4_000)),
+    ])
 
     const outboundMessageId = `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const message = await prisma.ticketMessage.create({
