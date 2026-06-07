@@ -45,7 +45,7 @@ beforeEach(() => {
 
 describe('createUser', () => {
   it('calls signUpEmail then sets the role and returns the created user', async () => {
-    const fakeUser = { id: 'u1', name: 'Alice', email: 'alice@test.com', role: 'agent', createdAt: new Date() }
+    const fakeUser = { id: 'u1', name: 'Alice', email: 'alice@test.com', role: 'agent' as const, createdAt: new Date() }
     mockSignUpEmail.mockResolvedValue(undefined)
     mockUserUpdate.mockResolvedValue(fakeUser)
 
@@ -105,7 +105,7 @@ describe('deleteUser', () => {
 
 describe('updateUser', () => {
   it('updates name, email and role without touching the password when none is supplied', async () => {
-    const fakeUser = { id: 'u1', name: 'Alice', email: 'alice@new.com', role: 'admin', createdAt: new Date() }
+    const fakeUser = { id: 'u1', name: 'Alice', email: 'alice@new.com', role: 'admin' as const, createdAt: new Date() }
     mockUserUpdate.mockResolvedValue(fakeUser)
 
     const result = await updateUser('u1', { name: 'Alice', email: 'alice@new.com', role: 'admin' })

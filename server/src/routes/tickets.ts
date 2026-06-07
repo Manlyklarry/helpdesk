@@ -184,7 +184,7 @@ router.post('/:id/messages', async (req, res) => {
       text: body,
       fromName: agent.name,
       messageId: outboundMessageId,
-      inReplyTo: ticket.messages[0]?.messageId,
+      inReplyTo: ticket.messages?.[0]?.messageId,
     }).catch((err) => console.error(`[email] Failed to send reply for ticket #${id}:`, err))
 
     return res.status(201).json(message)

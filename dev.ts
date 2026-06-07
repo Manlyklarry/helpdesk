@@ -1,12 +1,26 @@
 import { spawn } from 'bun'
 import { watch } from 'fs'
 
+let stopping = false
+
 function spawnServer() {
-  return spawn(['bun', 'run', 'dev'], {
+  const proc = spawn(['bun', 'run', 'dev'], {
     cwd: './server',
     stdout: 'inherit',
     stderr: 'inherit',
   })
+
+  // Auto-restart on unexpected exit (crash). bun --watch exits 0 on normal
+  // file-change restarts, so only restart on non-zero exit codes.
+  proc.exited.then((code) => {
+    if (stopping) return
+    if (code !== 0) {
+      console.log(`\n[dev] Server exited with code ${code} — restarting in 1s...`)
+      setTimeout(() => { server = spawnServer() }, 1_000)
+    }
+  })
+
+  return proc
 }
 
 let server = spawnServer()
@@ -31,6 +45,7 @@ watch('./server/prisma', { recursive: true }, (_event, filename) => {
 })
 
 process.on('SIGINT', () => {
+  stopping = true
   server.kill()
   client.kill()
   process.exit(0)
@@ -39,4 +54,5 @@ process.on('SIGINT', () => {
 // Keep the dev process alive as long as the client (Vite) is running.
 // The server is managed independently so schema-change restarts don't exit dev.ts.
 await client.exited
+stopping = true
 server.kill()

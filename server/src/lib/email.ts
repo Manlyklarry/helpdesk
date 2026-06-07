@@ -1,7 +1,7 @@
 import sgMail from '@sendgrid/mail'
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY ?? ''
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? ''
+const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? ''
 
 if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY)
@@ -17,7 +17,7 @@ export interface SendReplyOptions {
 }
 
 export async function sendReply(opts: SendReplyOptions): Promise<void> {
-  if (!SENDGRID_API_KEY || !SUPPORT_EMAIL) {
+  if (!SENDGRID_API_KEY || !SENDGRID_FROM_EMAIL) {
     console.warn('[email] SendGrid not configured — skipping send')
     return
   }
@@ -26,7 +26,7 @@ export async function sendReply(opts: SendReplyOptions): Promise<void> {
 
   await sgMail.send({
     to: opts.to,
-    from: { email: SUPPORT_EMAIL, name: opts.fromName },
+    from: { email: SENDGRID_FROM_EMAIL, name: opts.fromName },
     subject,
     text: opts.text,
     headers: {

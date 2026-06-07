@@ -34,6 +34,8 @@ mock.module('../lib/ai.js', () => ({
   summarizeTicket: mockSummarizeTicket,
 }))
 
+mock.module('../lib/email.js', () => ({ sendReply: mock().mockResolvedValue(undefined) }))
+
 const { default: ticketsRouter } = await import('./tickets.js')
 
 // ─── Test server ─────────────────────────────────────────────────────────────
@@ -206,7 +208,7 @@ describe('PATCH /tickets/:id/assign', () => {
 
 describe('POST /tickets/:id/messages', () => {
   it('creates a polished reply and returns 201', async () => {
-    mockTicketFindUnique.mockResolvedValue({ id: 1, fromName: 'Jane Smith' })
+    mockTicketFindUnique.mockResolvedValue({ id: 1, fromName: 'Jane Smith', fromEmail: 'jane@example.com', subject: 'Help needed', messages: [] })
     mockExtractFirstName.mockReturnValue('Jane')
     mockPolishReply.mockResolvedValue('Dear Jane, thank you for your patience.')
     const savedMsg = { id: 10, body: 'Dear Jane, thank you for your patience.', direction: 'outbound' }
@@ -219,7 +221,7 @@ describe('POST /tickets/:id/messages', () => {
   })
 
   it('includes the agent email and name in the saved message', async () => {
-    mockTicketFindUnique.mockResolvedValue({ id: 1, fromName: 'Jane' })
+    mockTicketFindUnique.mockResolvedValue({ id: 1, fromName: 'Jane', fromEmail: 'jane@example.com', subject: 'Help needed', messages: [] })
     mockExtractFirstName.mockReturnValue('Jane')
     mockPolishReply.mockResolvedValue('Polished')
     mockTicketMessageCreate.mockResolvedValue({ id: 10 })
@@ -247,7 +249,7 @@ describe('POST /tickets/:id/messages', () => {
   })
 
   it('returns 500 on database error', async () => {
-    mockTicketFindUnique.mockResolvedValue({ id: 1, fromName: 'Jane' })
+    mockTicketFindUnique.mockResolvedValue({ id: 1, fromName: 'Jane', fromEmail: 'jane@example.com', subject: 'Help needed', messages: [] })
     mockExtractFirstName.mockReturnValue('Jane')
     mockPolishReply.mockResolvedValue('Polished')
     mockTicketMessageCreate.mockRejectedValue(new Error('DB error'))

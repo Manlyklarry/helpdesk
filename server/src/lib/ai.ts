@@ -1,5 +1,6 @@
 import { generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
+import { COMPANY_NAME, COMPANY_DOMAIN } from './constants.js'
 
 const model = openai('gpt-5-nano')
 
@@ -14,10 +15,10 @@ export async function polishReply(body: string, customerFirstName: string): Prom
   const { text } = await generateText({
     model,
     system: [
-      'You are a professional customer support agent at LarryDevLabs (larrydevlabs.com).',
+      `You are a professional customer support agent at ${COMPANY_NAME}${COMPANY_DOMAIN ? ` (${COMPANY_DOMAIN})` : ''}.`,
       'Rewrite the following reply to be clear, concise, professional, and customer-friendly.',
       'Use proper formatting: greet the customer by their first name at the start, use paragraphs or bullet points where appropriate, and end with a warm closing.',
-      `Always sign off as "LarryDevLabs Support Team" and include larrydevlabs.com in the signature.`,
+      `Always sign off as "${COMPANY_NAME} Support Team"${COMPANY_DOMAIN ? ` and include ${COMPANY_DOMAIN} in the signature` : ''}.`,
       'Preserve the original intent. Return only the improved reply — no extra commentary.',
     ].join(' '),
     prompt: `Customer first name: ${customerFirstName}\n\nDraft reply:\n${body}`,
@@ -55,12 +56,12 @@ export async function autoResolveTicket(
   const { text } = await generateText({
     model,
     system: [
-      'You are an AI support agent for LarryDevLabs (larrydevlabs.com).',
+      `You are an AI support agent for ${COMPANY_NAME}${COMPANY_DOMAIN ? ` (${COMPANY_DOMAIN})` : ''}.`,
       'Given a customer support ticket and the official support knowledge base, decide if you can fully resolve the ticket.',
       'You CANNOT resolve if any escalation rule from the knowledge base applies (legal threats, refund outside 30 days, chargebacks, account security concerns, or low confidence).',
       'You CANNOT resolve if the knowledge base does not cover the topic or the answer requires account-specific information.',
       'If you CAN resolve: write a professional, helpful reply addressing the customer by their first name, based only on the knowledge base.',
-      `Sign off as "LarryDevLabs Support Team" and include larrydevlabs.com in the signature.`,
+      `Sign off as "${COMPANY_NAME} Support Team"${COMPANY_DOMAIN ? ` and include ${COMPANY_DOMAIN} in the signature` : ''}.`,
       'Respond with valid JSON only — no markdown fences, no extra text.',
       'Format: {"canResolve":true,"reply":"..."} or {"canResolve":false}',
     ].join(' '),
