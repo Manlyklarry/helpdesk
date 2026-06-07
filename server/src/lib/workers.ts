@@ -5,6 +5,7 @@ import { boss } from './boss.js'
 import { classifyTicket, autoResolveTicket, extractFirstName } from './ai.js'
 import { prisma } from './db.js'
 import { AI_AGENT_EMAIL } from './constants.js'
+import { sendReply } from './email.js'
 
 export const CLASSIFY_QUEUE = 'classify-ticket'
 export const AUTO_RESOLVE_QUEUE = 'auto-resolve-ticket'
@@ -42,6 +43,19 @@ export async function startWorkers() {
     const job = jobs[0]
     const { ticketId, subject, text, fromName } = job.data
 
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        fromEmail: true,
+        messages: {
+          where: { direction: 'inbound' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { messageId: true },
+        },
+      },
+    })
+
     await prisma.ticket.update({ where: { id: ticketId }, data: { status: 'processing' } })
 
     try {
@@ -50,15 +64,18 @@ export async function startWorkers() {
       const result = await autoResolveTicket(subject, text, knowledgeBase, customerFirstName)
 
       if (result.canResolve) {
+        const supportEmail = process.env.SUPPORT_EMAIL ?? 'support@system.local'
+        const outboundMessageId = `ai-reply-${ticketId}-${Date.now()}`
+
         await prisma.$transaction([
           prisma.ticketMessage.create({
             data: {
               ticketId,
-              messageId: `ai-reply-${ticketId}-${Date.now()}`,
+              messageId: outboundMessageId,
               direction: 'outbound',
               senderType: 'agent',
-              fromEmail: 'support@larrydevlabs.com',
-              fromName: 'LarryDevLabs Support',
+              fromEmail: supportEmail,
+              fromName: 'Support',
               body: result.reply,
             },
           }),
@@ -67,6 +84,18 @@ export async function startWorkers() {
             data: { status: 'resolved', resolvedByAi: true },
           }),
         ])
+
+        if (ticket) {
+          sendReply({
+            to: ticket.fromEmail,
+            subject,
+            text: result.reply,
+            fromName: 'Support',
+            messageId: outboundMessageId,
+            inReplyTo: ticket.messages[0]?.messageId,
+          }).catch((err) => console.error(`[email] Failed to send auto-resolve reply for ticket #${ticketId}:`, err))
+        }
+
         console.log(`[auto-resolve] ticket #${ticketId} resolved by AI`)
       } else {
         // Unassign from AI agent so a human can pick it up

@@ -289,11 +289,13 @@ All client-side API calls use **Axios** + **TanStack Query v5**. Never use `fetc
 | `parseIntParam(value)` | `server/src/lib/http.ts` | Parse a route param to `number`, returns `null` on failure; use in every `/:id` handler |
 | `firstZodError(err, fallback?)` | `server/src/lib/zod.ts` | Return the first Zod issue message; use after every `schema.safeParse` failure |
 | `findTicketOr404(id, res)` | local helper in `server/src/routes/tickets.ts` | Looks up a ticket by ID; writes a 404 response and returns `false` if not found — use in every handler that needs to guard on ticket existence |
+| `sendReply(opts)` | `server/src/lib/email.ts` | Send an outbound reply via SendGrid; sets `Message-ID` and `In-Reply-To` headers for email threading; no-ops with a warning when `SENDGRID_API_KEY` / `SUPPORT_EMAIL` are unset |
 
 **Rules:**
 - Always use `parseIntParam` for integer route params — never inline `parseInt` + `isNaN`
 - Always use `firstZodError` for Zod validation errors — never inline `err.issues[0]?.message`
 - Always use `findTicketOr404` before operating on a ticket — never inline the `findUnique + if (!existing) 404` pattern
+- Always use `sendReply` to send outbound emails — fire-and-forget with `.catch()` so email failures never fail the HTTP response; the message is already persisted in the DB
 
 ## Loading States
 

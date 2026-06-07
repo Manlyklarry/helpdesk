@@ -4,6 +4,7 @@ import { prisma } from '../lib/db.js'
 import { firstZodError } from '../lib/zod.js'
 import { parseIntParam } from '../lib/http.js'
 import { extractFirstName, polishReply, summarizeTicket } from '../lib/ai.js'
+import { sendReply } from '../lib/email.js'
 
 const router = Router()
 
@@ -145,16 +146,30 @@ router.post('/:id/messages', async (req, res) => {
   const agent = req.user!
 
   try {
-    const ticket = await prisma.ticket.findUnique({ where: { id }, select: { fromName: true } })
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        fromEmail: true,
+        fromName: true,
+        subject: true,
+        messages: {
+          where: { direction: 'inbound' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { messageId: true },
+        },
+      },
+    })
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
 
     const customerFirstName = extractFirstName(ticket.fromName)
     const body = await polishReply(parsed.data.body, customerFirstName)
 
+    const outboundMessageId = `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const message = await prisma.ticketMessage.create({
       data: {
         ticketId: id,
-        messageId: `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        messageId: outboundMessageId,
         direction: 'outbound',
         senderType: 'agent',
         fromEmail: agent.email,
@@ -162,6 +177,16 @@ router.post('/:id/messages', async (req, res) => {
         body,
       },
     })
+
+    sendReply({
+      to: ticket.fromEmail,
+      subject: ticket.subject,
+      text: body,
+      fromName: agent.name,
+      messageId: outboundMessageId,
+      inReplyTo: ticket.messages[0]?.messageId,
+    }).catch((err) => console.error(`[email] Failed to send reply for ticket #${id}:`, err))
+
     return res.status(201).json(message)
   } catch (err) {
     console.error('Failed to add reply:', err)
