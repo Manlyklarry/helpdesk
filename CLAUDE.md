@@ -81,11 +81,17 @@ bun install
 bun run dev
 ```
 
-- Client: http://localhost:5173
-- Server: http://localhost:3000
-- API health: http://localhost:3000/api/health
-
 The Vite dev server proxies all `/api/*` requests to the Express server — no CORS issues in development.
+
+After starting, always confirm both servers are up and report status in this exact table format:
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Frontend (Vite) | http://localhost:5173 | 200 OK |
+| Backend (Express) | http://localhost:3000 | 200 OK |
+| API health | http://localhost:3000/api/health | `{"status":"ok"}` |
+
+Note: Vite falls back to port 5174 if 5173 is in use — reflect the actual port in the table.
 
 ## Dev Server Auto-Refresh
 
