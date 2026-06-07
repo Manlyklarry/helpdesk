@@ -41,7 +41,6 @@ router.get('/', async (req, res) => {
     : { status: { notIn: ['new' as const, 'processing' as const] } }
 
   const where = {
-    resolvedByAi: false,
     ...baseStatusFilter,
     ...(category === 'none' ? { category: null } : category ? { category } : {}),
     ...(search ? {

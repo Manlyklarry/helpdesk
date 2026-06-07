@@ -19,7 +19,7 @@ See `project-scope.md` for full feature list and `implementation-plan.md` for th
 | HTTP client | Axios (client-side API calls)  |
 | Server state | TanStack Query v5 (useQuery, useMutation) |
 | AI         | Anthropic Claude API            |
-| Email      | Resend (inbound webhook + outbound) |
+| Email      | SendGrid (Inbound Parse webhook + outbound) |
 | Validation | Zod (client forms via react-hook-form resolver + server request bodies) |
 
 See `tech-stack.md` for rationale.
@@ -171,7 +171,7 @@ Required variables:
 - `BETTER_AUTH_SECRET` — Long random string (32+ chars) for session signing
 - `BETTER_AUTH_URL` — Server base URL (e.g. `http://localhost:3000`)
 - `ANTHROPIC_API_KEY` — Claude API key
-- `RESEND_API_KEY` — Resend email API key
+- `SENDGRID_API_KEY` — SendGrid API key (used for outbound email)
 
 **Note:** The `@` character in passwords must be URL-encoded as `%40` in the DATABASE_URL.
 
