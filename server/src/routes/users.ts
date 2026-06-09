@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import * as Sentry from '@sentry/node'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { prisma } from '../lib/db.js'
 import { createUser, updateUser, deleteUser } from '../lib/user-manager.js'
@@ -34,6 +35,7 @@ router.get('/agents', async (_req, res) => {
     })
     res.json(agents)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to fetch agents:', err)
     res.status(500).json({ error: 'Failed to load agents' })
   }
@@ -48,6 +50,7 @@ router.get('/', requireAdmin, async (_req, res) => {
     })
     res.json(users)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to fetch users:', err)
     res.status(500).json({ error: 'Failed to load users' })
   }
@@ -66,6 +69,7 @@ router.post('/', requireAdmin, async (req, res) => {
     const user = await createUser(name, email, password, role)
     return res.status(201).json(user)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to create user:', err)
     return res.status(500).json({ error: 'Failed to create user' })
   }
@@ -90,6 +94,7 @@ router.patch('/:id', requireAdmin, async (req, res) => {
     const user = await updateUser(id, { name, email, role, password })
     return res.json(user)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to update user:', err)
     return res.status(500).json({ error: 'Failed to update user' })
   }
@@ -106,6 +111,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     await deleteUser(id)
     return res.json({ success: true })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to delete user:', err)
     return res.status(500).json({ error: 'Failed to delete user' })
   }

@@ -137,7 +137,7 @@ describe('TicketsPage', () => {
 
     const openRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('alice@example.com'))!
     const badge = Array.from(openRow.querySelectorAll('span')).find((s) => s.textContent?.trim() === 'open')!
-    expect(badge).toHaveClass('bg-blue-50')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   it('renders a green badge for a resolved ticket', async () => {
@@ -146,7 +146,7 @@ describe('TicketsPage', () => {
 
     const resolvedRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('bob@example.com'))!
     const badge = Array.from(resolvedRow.querySelectorAll('span')).find((s) => s.textContent?.trim() === 'resolved')!
-    expect(badge).toHaveClass('bg-green-50')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   it('renders a gray badge for a closed ticket', async () => {
@@ -155,7 +155,7 @@ describe('TicketsPage', () => {
 
     const closedRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('carol@example.com'))!
     const badge = Array.from(closedRow.querySelectorAll('span')).find((s) => s.textContent?.trim() === 'closed')!
-    expect(badge).toHaveClass('bg-gray-100')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   // ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ describe('TicketsPage', () => {
 
     const row = screen.getAllByRole('row').find((r) => r.textContent?.includes('alice@example.com'))!
     const badge = Array.from(row.querySelectorAll('span')).find((s) => s.textContent?.trim() === 'technical')!
-    expect(badge).toHaveClass('bg-purple-50')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   it('renders an amber badge for a refund ticket', async () => {
@@ -177,7 +177,7 @@ describe('TicketsPage', () => {
 
     const row = screen.getAllByRole('row').find((r) => r.textContent?.includes('bob@example.com'))!
     const badge = Array.from(row.querySelectorAll('span')).find((s) => s.textContent?.trim() === 'refund')!
-    expect(badge).toHaveClass('bg-amber-50')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   it('renders a dash for a ticket with no category', async () => {

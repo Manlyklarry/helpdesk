@@ -66,7 +66,7 @@ export function CreateUserModal({
 
   return (
     <Modal onClose={onClose}>
-      <h2 className="mb-4 text-base font-semibold text-gray-900">Create user</h2>
+      <h2 className="mb-4 text-base font-semibold text-foreground">Create user</h2>
       <form
         onSubmit={handleSubmit((data) => mutation.mutate(data))}
         noValidate

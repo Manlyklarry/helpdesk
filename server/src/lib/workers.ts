@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { type Job } from 'pg-boss'
+import * as Sentry from '@sentry/node'
 import { boss } from './boss.js'
 import { classifyTicket, autoResolveTicket, extractFirstName } from './ai.js'
 import { prisma } from './db.js'
@@ -93,7 +94,10 @@ export async function startWorkers() {
             fromName: `${COMPANY_NAME} Support`,
             messageId: outboundMessageId,
             inReplyTo: ticket.messages[0]?.messageId,
-          }).catch((err) => console.error(`[email] Failed to send auto-resolve reply for ticket #${ticketId}:`, err))
+          }).catch((err) => {
+            Sentry.captureException(err)
+            console.error(`[email] Failed to send auto-resolve reply for ticket #${ticketId}:`, err)
+          })
         }
 
         console.log(`[auto-resolve] ticket #${ticketId} resolved by AI`)
@@ -106,6 +110,7 @@ export async function startWorkers() {
         console.log(`[auto-resolve] ticket #${ticketId} could not be resolved by AI — moved to open`)
       }
     } catch (err) {
+      Sentry.captureException(err)
       // Error fallback: unassign so the ticket isn't stuck assigned to AI
       await prisma.ticket.update({
         where: { id: ticketId },

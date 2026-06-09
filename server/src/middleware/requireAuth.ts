@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import * as Sentry from '@sentry/node'
 import { auth } from '../lib/auth.js'
 
 type BetterAuthSession = typeof auth.$Infer.Session
@@ -27,5 +28,6 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   req.user = session.user
   req.authSession = session.session
+  Sentry.setUser({ id: session.user.id, email: session.user.email })
   next()
 }

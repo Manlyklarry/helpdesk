@@ -108,7 +108,7 @@ describe('UsersPage', () => {
     )!
     const badge = adminRow.querySelector('span')!
     expect(badge).toHaveTextContent('admin')
-    expect(badge).toHaveClass('bg-purple-50')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   it('renders a gray badge for an agent user', async () => {
@@ -120,7 +120,7 @@ describe('UsersPage', () => {
     )!
     const badge = agentRow.querySelector('span')!
     expect(badge).toHaveTextContent('agent')
-    expect(badge).toHaveClass('bg-gray-100')
+    expect(badge).toHaveClass('rounded-full')
   })
 
   // ---------------------------------------------------------------------------

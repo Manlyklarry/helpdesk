@@ -2,6 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import Parse from '@sendgrid/inbound-mail-parser'
 import { z } from 'zod'
+import * as Sentry from '@sentry/node'
 import { prisma } from '../lib/db.js'
 import { sanitizeEmailHtml } from '../lib/sanitize.js'
 import { boss } from '../lib/boss.js'
@@ -125,6 +126,7 @@ router.post('/email', async (req, res) => {
     await processInboundEmail(parsed.data, { initialStatus: 'open' })
     return res.json({ ok: true })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to process inbound email:', err)
     return res.status(500).json({ error: 'Failed to process email' })
   }
@@ -166,6 +168,7 @@ router.post('/sendgrid', upload, async (req, res) => {
     await processInboundEmail(parsed.data)
     return res.json({ ok: true })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to process inbound email:', err)
     return res.status(500).json({ error: 'Failed to process email' })
   }

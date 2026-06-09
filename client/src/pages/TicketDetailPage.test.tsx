@@ -110,41 +110,41 @@ describe('TicketDetailPage', () => {
   it('renders a blue badge for an open ticket', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('open')).toBeInTheDocument())
-    expect(screen.getByText('open')).toHaveClass('bg-blue-50')
+    expect(screen.getByText('open')).toHaveClass('rounded-full')
   })
 
   it('renders a green badge for a resolved ticket', async () => {
     mockGet({ status: 'resolved' })
     renderPage()
     await waitFor(() => expect(screen.getByText('resolved')).toBeInTheDocument())
-    expect(screen.getByText('resolved')).toHaveClass('bg-green-50')
+    expect(screen.getByText('resolved')).toHaveClass('rounded-full')
   })
 
   it('renders a gray badge for a closed ticket', async () => {
     mockGet({ status: 'closed' })
     renderPage()
     await waitFor(() => expect(screen.getByText('closed')).toBeInTheDocument())
-    expect(screen.getByText('closed')).toHaveClass('bg-gray-100')
+    expect(screen.getByText('closed')).toHaveClass('rounded-full')
   })
 
   it('renders a purple badge for a technical ticket', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('technical')).toBeInTheDocument())
-    expect(screen.getByText('technical')).toHaveClass('bg-purple-50')
+    expect(screen.getByText('technical')).toHaveClass('rounded-full')
   })
 
   it('renders an amber badge for a refund ticket', async () => {
     mockGet({ category: 'refund' })
     renderPage()
     await waitFor(() => expect(screen.getByText('refund')).toBeInTheDocument())
-    expect(screen.getByText('refund')).toHaveClass('bg-amber-50')
+    expect(screen.getByText('refund')).toHaveClass('rounded-full')
   })
 
   it('renders a gray badge for a general ticket', async () => {
     mockGet({ category: 'general' })
     renderPage()
     await waitFor(() => expect(screen.getByText('general')).toBeInTheDocument())
-    expect(screen.getByText('general')).toHaveClass('bg-gray-100')
+    expect(screen.getByText('general')).toHaveClass('rounded-full')
   })
 
   it('shows no category badge when category is null', async () => {

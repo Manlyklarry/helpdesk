@@ -20,10 +20,9 @@ import {
   ResponsiveContainer,
   type TooltipProps,
 } from 'recharts'
-import { Navbar } from '../components/Navbar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { axiosError } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import type { DashboardStats, TicketsPerDay } from '@/types/dashboard'
 
 function formatDuration(ms: number): string {
@@ -41,7 +40,25 @@ function formatDuration(ms: number): string {
 
 function formatChartDate(iso: string): string {
   const [year, month, day] = iso.split('-').map(Number)
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+type Color = {
+  bg: string
+  icon: string
+  value?: string
+}
+
+const COLORS = {
+  blue:    { bg: 'bg-blue-50 dark:bg-blue-950/50',    icon: 'text-blue-600 dark:text-blue-400' },
+  amber:   { bg: 'bg-amber-50 dark:bg-amber-950/50',  icon: 'text-amber-600 dark:text-amber-400' },
+  violet:  { bg: 'bg-violet-50 dark:bg-violet-950/50', icon: 'text-violet-600 dark:text-violet-400' },
+  emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/50', icon: 'text-emerald-600 dark:text-emerald-400' },
+  pink:    { bg: 'bg-pink-50 dark:bg-pink-950/50',    icon: 'text-pink-600 dark:text-pink-400' },
+  zinc:    { bg: 'bg-zinc-100 dark:bg-zinc-800',      icon: 'text-zinc-500 dark:text-zinc-400' },
 }
 
 type StatCardProps = {
@@ -49,56 +66,52 @@ type StatCardProps = {
   value: string | number
   description?: string
   icon: React.ElementType
-  iconBg: string
-  iconColor: string
-  valueColor?: string
+  color: Color
+  valueClass?: string
 }
 
-function StatCard({ title, value, description, icon: Icon, iconBg, iconColor, valueColor }: StatCardProps) {
+function StatCard({ title, value, description, icon: Icon, color, valueClass }: StatCardProps) {
   return (
-    <Card className="relative overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-500 truncate">{title}</p>
-            <p className={`text-3xl font-bold mt-1.5 tabular-nums ${valueColor ?? 'text-gray-900'}`}>
-              {value}
-            </p>
-            {description && (
-              <p className="text-xs text-gray-400 mt-1">{description}</p>
-            )}
-          </div>
-          <div className={`shrink-0 p-2.5 rounded-xl ${iconBg}`}>
-            <Icon className={`h-5 w-5 ${iconColor}`} />
-          </div>
+    <div className="rounded-xl bg-card border border-border p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </p>
+        <div
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+            color.bg,
+          )}
+        >
+          <Icon className={cn('h-4 w-4', color.icon)} />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <p className={cn('text-3xl font-bold tabular-nums text-foreground', valueClass)}>
+        {value}
+      </p>
+      {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+    </div>
   )
 }
 
 function StatCardSkeleton() {
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <Skeleton className="h-4 w-32 mb-3" />
-            <Skeleton className="h-8 w-20" />
-          </div>
-          <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl bg-card border border-border p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
+      </div>
+      <Skeleton className="h-9 w-20" />
+    </div>
   )
 }
 
 function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-md">
-      <p className="text-xs font-medium text-gray-500 mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-gray-900">
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg">
+      <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+      <p className="text-sm font-semibold text-foreground">
         {payload[0].value} {payload[0].value === 1 ? 'ticket' : 'tickets'}
       </p>
     </div>
@@ -108,76 +121,66 @@ function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) 
 function TicketsChart({ data }: { data: TicketsPerDay[] }) {
   const chartData = data.map((d) => ({ ...d, label: formatChartDate(d.date) }))
   const maxCount = Math.max(...data.map((d) => d.count), 1)
-
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base font-semibold text-gray-900">
-          Ticket volume — last 30 days
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0 pr-6">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={chartData} barCategoryGap="30%">
-            <CartesianGrid
-              vertical={false}
-              stroke="#f3f4f6"
-              strokeDasharray="0"
-            />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: '#9ca3af' }}
-              tickLine={false}
-              axisLine={false}
-              interval={4}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#9ca3af' }}
-              tickLine={false}
-              axisLine={false}
-              width={28}
-              domain={[0, maxCount + 1]}
-            />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f9fafb', radius: 4 }} />
-            <Bar
-              dataKey="count"
-              fill="#6366f1"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={32}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl bg-card border border-border p-6 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground mb-5">
+        Ticket volume — last 30 days
+      </h3>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={chartData} barCategoryGap="30%">
+          <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="0" />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+            interval={4}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+            width={28}
+            domain={[0, maxCount + 1]}
+          />
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.5, radius: 4 }} />
+          <Bar
+            dataKey="count"
+            fill="var(--chart-1)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={32}
+            opacity={0.9}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
-const SKELETON_BAR_HEIGHTS = [35,55,40,70,50,30,60,45,80,35,55,65,40,75,50,30,60,45,55,70,35,50,65,40,75,50,45,60,35,55]
+const SKELETON_BARS = [35, 55, 40, 70, 50, 30, 60, 45, 80, 35, 55, 65, 40, 75, 50, 30, 60, 45, 55, 70, 35, 50, 65, 40, 75, 50, 45, 60, 35, 55]
 
 function TicketsChartSkeleton() {
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <Skeleton className="h-5 w-56" />
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex items-end gap-1.5 h-[220px] px-2">
-          {SKELETON_BAR_HEIGHTS.map((h, i) => (
-            <Skeleton
-              key={i}
-              className="flex-1 rounded-sm"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl bg-card border border-border p-6 shadow-sm">
+      <Skeleton className="h-4 w-52 mb-5" />
+      <div className="flex items-end gap-1.5 h-[220px] px-2">
+        {SKELETON_BARS.map((h, i) => (
+          <Skeleton key={i} className="flex-1 rounded-sm" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    </div>
   )
 }
 
 export function HomePage() {
-  const { data: stats, isLoading: statsLoading, error: statsError, refetch, isFetching } = useQuery({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () =>
       axios
@@ -198,118 +201,104 @@ export function HomePage() {
   const errorMessage = statsError
     ? axiosError(statsError, 'Failed to load dashboard')
     : chartError
-    ? axiosError(chartError, 'Failed to load chart data')
-    : null
+      ? axiosError(chartError, 'Failed to load chart data')
+      : null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500">Live overview of your support queue</p>
-          </div>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+    <main className="mx-auto max-w-7xl px-6 lg:px-8 py-10 fade-in">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Live overview of your support queue</p>
         </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:text-foreground hover:border-border/60 disabled:opacity-50 transition-all duration-150 shadow-sm"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+          Refresh
+        </button>
+      </div>
 
-        {errorMessage && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-            <p className="text-sm text-red-700">{errorMessage}</p>
-          </div>
-        )}
-
-        {/* Metrics grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {statsLoading ? (
-            Array.from({ length: 7 }).map((_, i) => <StatCardSkeleton key={i} />)
-          ) : stats ? (
-            <>
-              <StatCard
-                title="Total Tickets"
-                value={stats.totalTickets}
-                description="All time"
-                icon={Inbox}
-                iconBg="bg-indigo-50"
-                iconColor="text-indigo-600"
-              />
-              <StatCard
-                title="Open Tickets"
-                value={stats.openTickets}
-                description="Awaiting agent response"
-                icon={FolderOpen}
-                iconBg="bg-blue-50"
-                iconColor="text-blue-600"
-                valueColor={stats.openTickets > 0 ? 'text-blue-700' : 'text-gray-900'}
-              />
-              <StatCard
-                title="Processing"
-                value={stats.processingTickets}
-                description="AI resolution in progress"
-                icon={Loader2}
-                iconBg="bg-orange-50"
-                iconColor="text-orange-600"
-                valueColor={stats.processingTickets > 0 ? 'text-orange-700' : 'text-gray-900'}
-              />
-              <StatCard
-                title="Resolved Tickets"
-                value={stats.resolvedTickets}
-                description="Resolved + closed"
-                icon={CheckCircle2}
-                iconBg="bg-green-50"
-                iconColor="text-green-600"
-                valueColor="text-green-700"
-              />
-              <StatCard
-                title="AI Resolved"
-                value={stats.aiResolvedTickets}
-                description="Handled without agent"
-                icon={Bot}
-                iconBg="bg-violet-50"
-                iconColor="text-violet-600"
-                valueColor="text-violet-700"
-              />
-              <StatCard
-                title="AI Resolution Rate"
-                value={`${stats.aiResolutionRate}%`}
-                description="Of all resolved tickets"
-                icon={Percent}
-                iconBg="bg-purple-50"
-                iconColor="text-purple-600"
-                valueColor={
-                  stats.aiResolutionRate >= 50
-                    ? 'text-purple-700'
-                    : stats.aiResolutionRate > 0
-                    ? 'text-gray-900'
-                    : 'text-gray-400'
-                }
-              />
-              <StatCard
-                title="Avg Resolution Time"
-                value={stats.avgResolutionTimeMs !== null ? formatDuration(stats.avgResolutionTimeMs) : '—'}
-                description={stats.avgResolutionTimeMs !== null ? 'From open to resolved' : 'No resolved tickets yet'}
-                icon={Timer}
-                iconBg="bg-slate-100"
-                iconColor="text-slate-600"
-              />
-            </>
-          ) : null}
+      {errorMessage && (
+        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <p className="text-sm text-destructive">{errorMessage}</p>
         </div>
+      )}
 
-        {/* Daily volume chart */}
-        {chartLoading ? (
-          <TicketsChartSkeleton />
-        ) : chartData ? (
-          <TicketsChart data={chartData} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {statsLoading ? (
+          Array.from({ length: 7 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : stats ? (
+          <>
+            <StatCard
+              title="Total Tickets"
+              value={stats.totalTickets}
+              description="All time"
+              icon={Inbox}
+              color={COLORS.blue}
+            />
+            <StatCard
+              title="Open Tickets"
+              value={stats.openTickets}
+              description="Awaiting response"
+              icon={FolderOpen}
+              color={COLORS.amber}
+              valueClass={stats.openTickets > 0 ? 'text-amber-600 dark:text-amber-400' : undefined}
+            />
+            <StatCard
+              title="Processing"
+              value={stats.processingTickets}
+              description="AI in progress"
+              icon={Loader2}
+              color={COLORS.violet}
+              valueClass={stats.processingTickets > 0 ? 'text-violet-600 dark:text-violet-400' : undefined}
+            />
+            <StatCard
+              title="Resolved"
+              value={stats.resolvedTickets}
+              description="Resolved + closed"
+              icon={CheckCircle2}
+              color={COLORS.emerald}
+              valueClass="text-emerald-600 dark:text-emerald-400"
+            />
+            <StatCard
+              title="AI Resolved"
+              value={stats.aiResolvedTickets}
+              description="Handled without agent"
+              icon={Bot}
+              color={COLORS.blue}
+            />
+            <StatCard
+              title="AI Rate"
+              value={`${stats.aiResolutionRate}%`}
+              description="Of all resolved"
+              icon={Percent}
+              color={COLORS.pink}
+            />
+            <StatCard
+              title="Avg Resolution"
+              value={
+                stats.avgResolutionTimeMs !== null
+                  ? formatDuration(stats.avgResolutionTimeMs)
+                  : '—'
+              }
+              description={
+                stats.avgResolutionTimeMs !== null ? 'From open to resolved' : 'No data yet'
+              }
+              icon={Timer}
+              color={COLORS.zinc}
+            />
+          </>
         ) : null}
-      </main>
-    </div>
+      </div>
+
+      {chartLoading ? (
+        <TicketsChartSkeleton />
+      ) : chartData ? (
+        <TicketsChart data={chartData} />
+      ) : null}
+    </main>
   )
 }

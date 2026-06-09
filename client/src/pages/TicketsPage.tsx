@@ -9,8 +9,6 @@ import {
   createColumnHelper,
   type SortingState,
 } from '@tanstack/react-table'
-import { Navbar } from '../components/Navbar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { axiosError } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -32,47 +30,50 @@ function Pagination({
   onPage: (p: number) => void
 }) {
   if (totalPages <= 1) return null
-
   const from = (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, total)
-
   const pages: (number | '…')[] = []
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pages.push(i)
   } else {
     pages.push(1)
     if (page > 3) pages.push('…')
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i)
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++)
+      pages.push(i)
     if (page < totalPages - 2) pages.push('…')
     pages.push(totalPages)
   }
-
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-      <p className="text-sm text-gray-500">
+    <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+      <p className="text-sm text-muted-foreground">
         Showing{' '}
-        <span className="font-medium text-gray-700">{from}–{to}</span>
-        {' '}of{' '}
-        <span className="font-medium text-gray-700">{total}</span> tickets
+        <span className="font-medium text-foreground">
+          {from}–{to}
+        </span>{' '}
+        of <span className="font-medium text-foreground">{total}</span> tickets
       </p>
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPage(page - 1)}
           disabled={page === 1}
-          className="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           ← Prev
         </button>
         {pages.map((p, i) =>
           p === '…' ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-sm text-gray-400">…</span>
+            <span key={`e-${i}`} className="px-2 text-sm text-muted-foreground">
+              …
+            </span>
           ) : (
             <button
               key={p}
               onClick={() => onPage(p as number)}
               className={cn(
                 'min-w-[32px] px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                p === page ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
+                p === page
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
             >
               {p}
@@ -82,7 +83,7 @@ function Pagination({
         <button
           onClick={() => onPage(page + 1)}
           disabled={page === totalPages}
-          className="px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Next →
         </button>
@@ -91,14 +92,14 @@ function Pagination({
   )
 }
 
-type InlineAgentSelectProps = {
+function InlineAgentSelect({
+  ticketId,
+  currentAgent,
+}: {
   ticketId: number
   currentAgent: Ticket['assignedAgent']
-}
-
-function InlineAgentSelect({ ticketId, currentAgent }: InlineAgentSelectProps) {
+}) {
   const queryClient = useQueryClient()
-
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
     queryFn: () =>
@@ -106,19 +107,17 @@ function InlineAgentSelect({ ticketId, currentAgent }: InlineAgentSelectProps) {
         .get<AgentSummary[]>('/api/users/agents', { withCredentials: true })
         .then((r) => r.data),
   })
-
   const { mutate: assign, isPending } = useMutation({
     mutationFn: (agentId: string | null) =>
       axios.patch(`/api/tickets/${ticketId}/assign`, { agentId }, { withCredentials: true }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
   })
-
   return (
     <select
       disabled={isPending}
       value={currentAgent?.id ?? ''}
       onChange={(e) => assign(e.target.value || null)}
-      className="w-full max-w-[160px] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-200 disabled:opacity-50"
+      className="w-full max-w-[160px] rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50 transition-colors"
     >
       <option value="">Unassigned</option>
       {agents.map((a) => (
@@ -146,7 +145,6 @@ const CATEGORY_FILTERS = [
 ]
 
 const SKELETON_COLS = ['Subject', 'Sender', 'Category', 'Status', 'Assigned to', 'Date']
-
 const columnHelper = createColumnHelper<Ticket>()
 
 const columns = [
@@ -156,7 +154,7 @@ const columns = [
     cell: (info) => (
       <Link
         to={`/tickets/${info.row.original.id}`}
-        className="font-medium text-gray-900 hover:text-blue-600 max-w-xs truncate block transition-colors"
+        className="font-medium text-foreground hover:text-primary max-w-xs truncate block transition-colors"
       >
         {info.getValue()}
       </Link>
@@ -166,9 +164,9 @@ const columns = [
     header: 'Sender',
     enableSorting: true,
     cell: (info) => (
-      <div className="text-gray-600">
-        <div>{info.getValue()}</div>
-        <div className="text-xs text-gray-400">{info.row.original.fromEmail}</div>
+      <div>
+        <div className="text-sm text-foreground">{info.getValue()}</div>
+        <div className="text-xs text-muted-foreground">{info.row.original.fromEmail}</div>
       </div>
     ),
   }),
@@ -177,9 +175,11 @@ const columns = [
     enableSorting: false,
     cell: (info) => {
       const cat = info.getValue()
-      return cat
-        ? <CategoryBadge category={cat} />
-        : <span className="text-xs text-gray-400">—</span>
+      return cat ? (
+        <CategoryBadge category={cat} />
+      ) : (
+        <span className="text-xs text-muted-foreground">—</span>
+      )
     },
   }),
   columnHelper.accessor('status', {
@@ -201,7 +201,9 @@ const columns = [
     header: 'Date',
     enableSorting: true,
     cell: (info) => (
-      <span className="text-gray-500">{new Date(info.getValue()).toLocaleDateString()}</span>
+      <span className="text-xs text-muted-foreground">
+        {new Date(info.getValue()).toLocaleDateString()}
+      </span>
     ),
   }),
 ]
@@ -222,7 +224,6 @@ export function TicketsPage() {
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  // Reset to page 1 whenever filters, search, or sort change
   useEffect(() => {
     setPage(1)
   }, [sortBy, sortDir, filterStatus, filterCategory, search])
@@ -257,171 +258,201 @@ export function TicketsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Tickets</h1>
+    <main className="mx-auto max-w-7xl px-6 lg:px-8 py-10 fade-in">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Tickets</h1>
+      </div>
+
+      <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-border">
+          <p className="text-sm font-semibold text-foreground">All tickets</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>All tickets</CardTitle>
-          </CardHeader>
-
-          {/* Filter bar */}
-          <div className="px-6 py-4 border-t border-b border-gray-100 bg-gray-50/40 flex flex-col gap-3">
-            <div className="relative">
-              <svg
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.75}
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
-              </svg>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by subject, name or email…"
-                className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-gray-800 placeholder-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+        {/* Filter bar */}
+        <div className="px-6 py-4 border-b border-border bg-muted/40 flex flex-col gap-3">
+          <div className="relative">
+            <svg
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.75}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"
               />
-            </div>
+            </svg>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by subject, name or email…"
+              className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-colors"
+            />
+          </div>
 
-            <div className="flex flex-wrap items-center gap-5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</span>
-                <div className="flex gap-1">
-                  {STATUS_FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => setFilterStatus(f.value)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-                        filterStatus === f.value ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+          <div className="flex flex-wrap items-center gap-5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Status
+              </span>
+              <div className="flex gap-1">
+                {STATUS_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setFilterStatus(f.value)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150',
+                      filterStatus === f.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Category</span>
-                <div className="flex gap-1">
-                  {CATEGORY_FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => setFilterCategory(f.value)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-                        filterCategory === f.value ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Category
+              </span>
+              <div className="flex gap-1">
+                {CATEGORY_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setFilterCategory(f.value)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150',
+                      filterCategory === f.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
+        </div>
 
-          <CardContent className="p-0">
-            {isLoading && (
-              <table className="w-full text-sm">
-                <thead className="border-b border-gray-200 bg-gray-50/60">
-                  <tr>
-                    {SKELETON_COLS.map((col, i) => (
-                      <th key={i} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                        {col}
+        {/* Table */}
+        {isLoading && (
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-muted/40">
+              <tr>
+                {SKELETON_COLS.map((col, i) => (
+                  <th
+                    key={i}
+                    className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-6 py-4">
+                    <Skeleton className="h-4 w-48" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <Skeleton className="h-4 w-36" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <Skeleton className="h-6 w-32 rounded-lg" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <Skeleton className="h-4 w-20" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {errorMessage && (
+          <p className="px-6 py-8 text-sm text-destructive">{errorMessage}</p>
+        )}
+
+        {!isLoading && !errorMessage && (
+          <>
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/40">
+                {table.getHeaderGroups().map((hg) => (
+                  <tr key={hg.id}>
+                    {hg.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                      >
+                        {header.column.getCanSort() ? (
+                          <button
+                            className="flex items-center gap-1 hover:text-foreground cursor-pointer select-none transition-colors"
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            <span className="text-muted-foreground/50">
+                              {({ asc: '↑', desc: '↓' } as Record<string, string>)[
+                                header.column.getIsSorted() as string
+                              ] ?? '↕'}
+                            </span>
+                          </button>
+                        ) : (
+                          flexRender(header.column.columnDef.header, header.getContext())
+                        )}
                       </th>
                     ))}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-48" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-36" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-5 w-14 rounded-full" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-6 w-32 rounded-md" /></td>
-                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {errorMessage && (
-              <p className="px-6 py-8 text-sm text-destructive">{errorMessage}</p>
-            )}
-            {!isLoading && !errorMessage && (
-              <>
-                <table className="w-full text-sm">
-                  <thead className="border-b border-gray-200 bg-gray-50/60">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <tr key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <th
-                            key={header.id}
-                            className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
-                          >
-                            {header.column.getCanSort() ? (
-                              <button
-                                className="flex items-center gap-1 hover:text-gray-700 cursor-pointer select-none"
-                                onClick={header.column.getToggleSortingHandler()}
-                              >
-                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                <span className="text-gray-400">
-                                  {{ asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] ?? '↕'}
-                                </span>
-                              </button>
-                            ) : (
-                              flexRender(header.column.columnDef.header, header.getContext())
-                            )}
-                          </th>
-                        ))}
-                      </tr>
-                    ))}
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {table.getRowModel().rows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                          No tickets yet
+                ))}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-12 text-center text-muted-foreground text-sm"
+                    >
+                      No tickets yet
+                    </td>
+                  </tr>
+                ) : (
+                  table.getRowModel().rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-muted/40 transition-colors">
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-6 py-4">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
-                      </tr>
-                    ) : (
-                      table.getRowModel().rows.map((row) => (
-                        <tr key={row.id} className="hover:bg-gray-50/60 transition-colors">
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id} className="px-6 py-4">
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                {result && (
-                  <Pagination
-                    page={result.page}
-                    totalPages={result.totalPages}
-                    total={result.total}
-                    pageSize={result.pageSize}
-                    onPage={setPage}
-                  />
+                      ))}
+                    </tr>
+                  ))
                 )}
-              </>
+              </tbody>
+            </table>
+            {result && (
+              <Pagination
+                page={result.page}
+                totalPages={result.totalPages}
+                total={result.total}
+                pageSize={result.pageSize}
+                onPage={setPage}
+              />
             )}
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+          </>
+        )}
+      </div>
+    </main>
   )
 }

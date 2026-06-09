@@ -73,7 +73,7 @@ export function EditUserModal({
 
   return (
     <Modal onClose={onClose}>
-      <h2 className="mb-4 text-base font-semibold text-gray-900">Edit user</h2>
+      <h2 className="mb-4 text-base font-semibold text-foreground">Edit user</h2>
       <form
         onSubmit={handleSubmit((data) => mutation.mutate(data))}
         noValidate
@@ -104,7 +104,7 @@ export function EditUserModal({
         <FormField id="edit-role" label="Role" error={errors.role?.message}>
           <select
             id="edit-role"
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-colors"
             aria-invalid={!!errors.role}
             {...register('role')}
           >
@@ -115,7 +115,7 @@ export function EditUserModal({
 
         <FormField
           id="edit-password"
-          label={<>Password <span className="ml-1 text-xs font-normal text-gray-400">(leave blank to keep current)</span></>}
+          label={<>Password <span className="ml-1 text-xs font-normal text-muted-foreground">(leave blank to keep current)</span></>}
           error={errors.password?.message}
         >
           <Input

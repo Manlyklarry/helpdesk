@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { authClient } from './lib/auth-client'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { UsersPage } from './pages/UsersPage'
@@ -18,11 +19,16 @@ function ProtectedRoute({
 
   if (isPending || error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="border-b border-gray-200 bg-white h-16" />
-        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="flex min-h-screen bg-background">
+        <div className="w-[240px] shrink-0 bg-sidebar border-r border-sidebar-border" />
+        <main className="flex-1 px-8 py-10">
+          <Skeleton className="h-6 w-40 mb-6" />
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 rounded-xl" />
         </main>
       </div>
     )
@@ -31,7 +37,7 @@ function ProtectedRoute({
   if (!session) return <Navigate to="/login" replace />
   if (adminOnly && session.user.role !== 'admin') return <Navigate to="/" replace />
 
-  return <>{children}</>
+  return <Layout>{children}</Layout>
 }
 
 function App() {

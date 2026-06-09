@@ -109,7 +109,7 @@ describe('HomePage', () => {
   it('renders the Resolved Tickets card with the correct value', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('72')).toBeInTheDocument())
-    expect(screen.getByText('Resolved Tickets')).toBeInTheDocument()
+    expect(screen.getByText('Resolved')).toBeInTheDocument()
   })
 
   it('renders the AI Resolved card with the correct value', async () => {
@@ -121,7 +121,7 @@ describe('HomePage', () => {
   it('renders the AI Resolution Rate as a percentage', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('21%')).toBeInTheDocument())
-    expect(screen.getByText('AI Resolution Rate')).toBeInTheDocument()
+    expect(screen.getByText('AI Rate')).toBeInTheDocument()
   })
 
   // ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ describe('HomePage', () => {
     mockGet({ ...MOCK_STATS, avgResolutionTimeMs: null })
     renderPage()
     await waitFor(() => expect(screen.getByText('—')).toBeInTheDocument())
-    expect(screen.getByText('No resolved tickets yet')).toBeInTheDocument()
+    expect(screen.getByText('No data yet')).toBeInTheDocument()
   })
 
   it('shows "From open to resolved" description when avgResolutionTimeMs has a value', async () => {

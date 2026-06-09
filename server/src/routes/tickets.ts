@@ -1,5 +1,6 @@
 import { Router, type Response } from 'express'
 import { z } from 'zod'
+import * as Sentry from '@sentry/node'
 import { prisma } from '../lib/db.js'
 import { firstZodError } from '../lib/zod.js'
 import { parseIntParam } from '../lib/http.js'
@@ -79,6 +80,7 @@ router.get('/', async (req, res) => {
     ])
     return res.json({ data: tickets, total, page, pageSize, totalPages: Math.ceil(total / pageSize) })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to fetch tickets:', err)
     return res.status(500).json({ error: 'Failed to load tickets' })
   }
@@ -98,6 +100,7 @@ router.get('/:id', async (req, res) => {
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' })
     return res.json(ticket)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to fetch ticket:', err)
     return res.status(500).json({ error: 'Failed to load ticket' })
   }
@@ -128,6 +131,7 @@ router.patch('/:id/assign', async (req, res) => {
     })
     return res.json(ticket)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to assign ticket:', err)
     return res.status(500).json({ error: 'Failed to assign ticket' })
   }
@@ -188,10 +192,14 @@ router.post('/:id/messages', async (req, res) => {
       fromName: agent.name,
       messageId: outboundMessageId,
       inReplyTo: ticket.messages?.[0]?.messageId,
-    }).catch((err) => console.error(`[email] Failed to send reply for ticket #${id}:`, err))
+    }).catch((err) => {
+      Sentry.captureException(err)
+      console.error(`[email] Failed to send reply for ticket #${id}:`, err)
+    })
 
     return res.status(201).json(message)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to add reply:', err)
     return res.status(500).json({ error: 'Failed to send reply' })
   }
@@ -211,6 +219,7 @@ router.post('/:id/polish-reply', async (req, res) => {
     const polished = await polishReply(parsed.data.body, customerFirstName)
     return res.json({ polished })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to polish reply:', err)
     return res.status(500).json({ error: 'Failed to polish reply' })
   }
@@ -234,6 +243,7 @@ router.post('/:id/summarize', async (req, res) => {
     const summary = await summarizeTicket(ticket.subject, ticket.messages)
     return res.json({ summary })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to summarize ticket:', err)
     return res.status(500).json({ error: 'Failed to summarize ticket' })
   }
@@ -259,6 +269,7 @@ router.patch('/:id/status', async (req, res) => {
     })
     return res.json(ticket)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to update ticket status:', err)
     return res.status(500).json({ error: 'Failed to update ticket' })
   }
@@ -284,6 +295,7 @@ router.patch('/:id/category', async (req, res) => {
     })
     return res.json(ticket)
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to update ticket category:', err)
     return res.status(500).json({ error: 'Failed to update ticket' })
   }

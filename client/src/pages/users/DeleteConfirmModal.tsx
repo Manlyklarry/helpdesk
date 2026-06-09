@@ -26,10 +26,10 @@ export function DeleteConfirmModal({
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-sm">
-      <h2 className="mb-2 text-base font-semibold text-gray-900">Delete user</h2>
-      <p className="mb-6 text-sm text-gray-600">
+      <h2 className="mb-2 text-base font-semibold text-foreground">Delete user</h2>
+      <p className="mb-6 text-sm text-muted-foreground">
         Are you sure you want to delete{' '}
-        <span className="font-medium text-gray-900">{user.name}</span>? This action cannot be undone.
+        <span className="font-medium text-foreground">{user.name}</span>? This action cannot be undone.
       </p>
 
       {serverError && (

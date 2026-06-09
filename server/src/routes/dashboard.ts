@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import * as Sentry from '@sentry/node'
 import { prisma } from '../lib/db.js'
 
 const router = Router()
@@ -32,6 +33,7 @@ router.get('/stats', async (_req, res) => {
       avgResolutionTimeMs: row.avgResolutionTimeMs !== null ? Number(row.avgResolutionTimeMs) : null,
     })
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to fetch dashboard stats:', err)
     return res.status(500).json({ error: 'Failed to load dashboard stats' })
   }
@@ -43,6 +45,7 @@ router.get('/tickets-per-day', async (_req, res) => {
 
     return res.json(rows.map((r) => ({ date: r.date, count: Number(r.count) })))
   } catch (err) {
+    Sentry.captureException(err)
     console.error('Failed to fetch tickets per day:', err)
     return res.status(500).json({ error: 'Failed to load chart data' })
   }
