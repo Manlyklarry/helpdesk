@@ -154,7 +154,7 @@ const columns = [
     cell: (info) => (
       <Link
         to={`/tickets/${info.row.original.id}`}
-        className="font-medium text-foreground hover:text-primary max-w-xs truncate block transition-colors"
+        className="font-medium text-foreground hover:text-primary max-w-[280px] truncate block transition-colors"
       >
         {info.getValue()}
       </Link>
@@ -258,14 +258,22 @@ export function TicketsPage() {
   })
 
   return (
-    <main className="mx-auto max-w-7xl px-6 lg:px-8 py-10 fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Tickets</h1>
+    <main className="mx-auto max-w-7xl px-6 lg:px-8 py-8 fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Tickets</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage and respond to support requests</p>
+        </div>
+        {result && (
+          <span className="text-sm text-muted-foreground bg-card border border-border rounded-full px-3 py-1 shadow-sm">
+            {result.total} total
+          </span>
+        )}
       </div>
 
       <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-6 py-4 border-b border-border bg-muted/20">
           <p className="text-sm font-semibold text-foreground">All tickets</p>
         </div>
 
@@ -359,24 +367,12 @@ export function TicketsPage() {
             <tbody className="divide-y divide-border">
               {Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-4 w-48" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-4 w-36" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-5 w-14 rounded-full" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-6 w-32 rounded-lg" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <Skeleton className="h-4 w-20" />
-                  </td>
+                  <td className="px-6 py-3.5"><Skeleton className="h-4 w-48" /></td>
+                  <td className="px-6 py-3.5"><Skeleton className="h-4 w-36" /></td>
+                  <td className="px-6 py-3.5"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                  <td className="px-6 py-3.5"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                  <td className="px-6 py-3.5"><Skeleton className="h-6 w-32 rounded-lg" /></td>
+                  <td className="px-6 py-3.5"><Skeleton className="h-4 w-20" /></td>
                 </tr>
               ))}
             </tbody>
@@ -430,9 +426,9 @@ export function TicketsPage() {
                   </tr>
                 ) : (
                   table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-muted/40 transition-colors">
+                    <tr key={row.id} className="hover:bg-muted/30 transition-colors duration-100 cursor-pointer">
                       {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-6 py-4">
+                        <td key={cell.id} className="px-6 py-3.5">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}

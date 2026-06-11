@@ -48,16 +48,16 @@ function formatChartDate(iso: string): string {
 type Color = {
   bg: string
   icon: string
-  value?: string
+  accent: string
 }
 
 const COLORS = {
-  blue:    { bg: 'bg-blue-50 dark:bg-blue-950/50',    icon: 'text-blue-600 dark:text-blue-400' },
-  amber:   { bg: 'bg-amber-50 dark:bg-amber-950/50',  icon: 'text-amber-600 dark:text-amber-400' },
-  violet:  { bg: 'bg-violet-50 dark:bg-violet-950/50', icon: 'text-violet-600 dark:text-violet-400' },
-  emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/50', icon: 'text-emerald-600 dark:text-emerald-400' },
-  pink:    { bg: 'bg-pink-50 dark:bg-pink-950/50',    icon: 'text-pink-600 dark:text-pink-400' },
-  zinc:    { bg: 'bg-zinc-100 dark:bg-zinc-800',      icon: 'text-zinc-500 dark:text-zinc-400' },
+  blue:    { bg: 'bg-blue-50 dark:bg-blue-950/40',    icon: 'text-blue-600 dark:text-blue-400',   accent: 'border-l-blue-500' },
+  amber:   { bg: 'bg-amber-50 dark:bg-amber-950/40',  icon: 'text-amber-600 dark:text-amber-400', accent: 'border-l-amber-500' },
+  violet:  { bg: 'bg-violet-50 dark:bg-violet-950/40', icon: 'text-violet-600 dark:text-violet-400', accent: 'border-l-violet-500' },
+  emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', icon: 'text-emerald-600 dark:text-emerald-400', accent: 'border-l-emerald-500' },
+  pink:    { bg: 'bg-pink-50 dark:bg-pink-950/40',    icon: 'text-pink-600 dark:text-pink-400',   accent: 'border-l-pink-500' },
+  zinc:    { bg: 'bg-zinc-100 dark:bg-zinc-800/60',   icon: 'text-zinc-500 dark:text-zinc-400',   accent: 'border-l-zinc-400' },
 }
 
 type StatCardProps = {
@@ -71,36 +71,35 @@ type StatCardProps = {
 
 function StatCard({ title, value, description, icon: Icon, color, valueClass }: StatCardProps) {
   return (
-    <div className="rounded-xl bg-card border border-border p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div className={cn(
+      'rounded-xl bg-card border border-border border-l-[3px] p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-px',
+      color.accent,
+    )}>
       <div className="flex items-start justify-between gap-3 mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/80">
           {title}
         </p>
-        <div
-          className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-            color.bg,
-          )}
-        >
+        <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', color.bg)}>
           <Icon className={cn('h-4 w-4', color.icon)} />
         </div>
       </div>
-      <p className={cn('text-3xl font-bold tabular-nums text-foreground', valueClass)}>
+      <p className={cn('text-[28px] font-bold tabular-nums leading-none text-foreground', valueClass)}>
         {value}
       </p>
-      {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+      {description && <p className="text-xs text-muted-foreground mt-2">{description}</p>}
     </div>
   )
 }
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-xl bg-card border border-border p-5 shadow-sm">
+    <div className="rounded-xl bg-card border border-border border-l-[3px] border-l-border p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3 mb-3">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-8 w-8 rounded-lg" />
       </div>
-      <Skeleton className="h-9 w-20" />
+      <Skeleton className="h-8 w-20 mt-1" />
+      <Skeleton className="h-3 w-28 mt-2" />
     </div>
   )
 }
@@ -126,9 +125,10 @@ function TicketsChart({ data }: { data: TicketsPerDay[] }) {
   const maxCount = Math.max(...data.map((d) => d.count), 1)
   return (
     <div className="rounded-xl bg-card border border-border p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-foreground mb-5">
-        Ticket volume — last 30 days
-      </h3>
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-sm font-semibold text-foreground">Ticket volume</h3>
+        <span className="text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">Last 30 days</span>
+      </div>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData} barCategoryGap="30%">
           <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="0" />
@@ -208,16 +208,16 @@ export function HomePage() {
       : null
 
   return (
-    <main className="mx-auto max-w-7xl px-6 lg:px-8 py-10 fade-in">
+    <main className="mx-auto max-w-7xl px-6 lg:px-8 py-8 fade-in">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">Live overview of your support queue</p>
         </div>
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:text-foreground hover:border-border/60 disabled:opacity-50 transition-all duration-150 shadow-sm"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 transition-all duration-150 shadow-sm cursor-pointer"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
           Refresh

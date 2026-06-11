@@ -5,12 +5,9 @@ import {
   Inbox,
   Users,
   LogOut,
-  Sun,
-  Moon,
   X,
 } from 'lucide-react'
 import { authClient } from '../lib/auth-client'
-import { useTheme } from '../contexts/theme'
 import { cn } from '@/lib/utils'
 
 const NAV = [
@@ -33,38 +30,15 @@ function NavItem({
     <Link
       to={to}
       className={cn(
-        'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150',
+        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer',
         active
-          ? 'bg-primary/10 text-primary dark:bg-primary/20'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          ? 'bg-primary text-primary-foreground shadow-sm'
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
       )}
     >
-      {active && (
-        <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-primary" />
-      )}
-      <Icon className="h-[18px] w-[18px] shrink-0" />
+      <Icon className="h-[17px] w-[17px] shrink-0" />
       <span className="truncate">{label}</span>
     </Link>
-  )
-}
-
-function FooterButton({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: React.ElementType
-  label: string
-  onClick?: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
-    >
-      <Icon className="h-[18px] w-[18px] shrink-0" />
-      <span>{label}</span>
-    </button>
   )
 }
 
@@ -73,7 +47,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: session } = authClient.useSession()
-  const { isDark, toggle: toggleTheme } = useTheme()
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
@@ -96,62 +69,76 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-sidebar border-r border-sidebar-border shadow-2xl',
+        'fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-sidebar border-r border-sidebar-border',
+        // Desktop: always visible
+        'lg:translate-x-0',
+        // Mobile: drawer
         'transition-transform duration-200 ease-in-out',
-        open ? 'translate-x-0' : '-translate-x-full',
+        open ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
       )}
     >
-      {/* Brand + close */}
-      <div className="flex h-[60px] shrink-0 items-center justify-between px-4 border-b border-sidebar-border">
+      {/* Brand */}
+      <div className="flex h-14 shrink-0 items-center justify-between px-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
             <Inbox className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-[15px] font-semibold tracking-tight text-foreground">
-            Helpdesk
-          </span>
+          <div>
+            <span className="text-[14px] font-bold tracking-tight text-sidebar-foreground">
+              Helpdesk
+            </span>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Support portal</p>
+          </div>
         </div>
         <button
           onClick={onClose}
           aria-label="Close menu"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors lg:hidden cursor-pointer"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          Main
+        </p>
         {NAV.map(({ to, icon, label }) => (
           <NavItem key={to} to={to} icon={icon} label={label} active={isActive(to)} />
         ))}
         {session?.user.role === 'admin' && (
-          <NavItem to="/users" icon={Users} label="Users" active={isActive('/users')} />
+          <>
+            <p className="px-3 mt-4 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              Admin
+            </p>
+            <NavItem to="/users" icon={Users} label="Users" active={isActive('/users')} />
+          </>
         )}
       </nav>
 
-      {/* Footer */}
-      <div className="shrink-0 border-t border-sidebar-border px-3 py-3 space-y-0.5">
-        <FooterButton
-          icon={isDark ? Sun : Moon}
-          label={isDark ? 'Light mode' : 'Dark mode'}
-          onClick={toggleTheme}
-        />
-        <FooterButton icon={LogOut} label="Sign out" onClick={handleSignOut} />
-
+      {/* User footer */}
+      <div className="shrink-0 border-t border-sidebar-border p-3">
         {session && (
-          <div className="flex items-center gap-3 px-3 py-2 mt-1">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors group">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
               {initials}
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-foreground">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-sidebar-foreground">
                 {session.user.name}
               </p>
               <p className="truncate text-[11px] text-muted-foreground">
                 {session.user.email}
               </p>
             </div>
+            <button
+              onClick={handleSignOut}
+              aria-label="Sign out"
+              className="opacity-0 group-hover:opacity-100 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive transition-all cursor-pointer"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
           </div>
         )}
       </div>

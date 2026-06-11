@@ -10,12 +10,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const { isDark, toggle: toggleTheme } = useTheme()
 
-  // Close sidebar on route change
   useEffect(() => {
     setOpen(false)
   }, [location.pathname])
 
-  // Close sidebar on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -26,37 +24,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Backdrop */}
+      {/* Mobile backdrop */}
       <div
         className={cn(
-          'fixed inset-0 z-30 bg-black/50 transition-opacity duration-200',
+          'fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden',
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         )}
         onClick={() => setOpen(false)}
       />
 
-      {/* Sidebar drawer */}
+      {/* Sidebar — always visible on lg+, drawer on mobile */}
       <Sidebar open={open} onClose={() => setOpen(false)} />
 
-      {/* Page shell */}
-      <div className="flex flex-col min-h-screen">
+      {/* Main content area shifted right on desktop */}
+      <div className="flex flex-col min-h-screen lg:pl-[260px]">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm px-4">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-card/80 backdrop-blur-md px-4 shadow-sm">
           <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
             <button
               onClick={() => setOpen(true)}
               aria-label="Open menu"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden cursor-pointer"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="text-[15px] font-semibold text-foreground">Helpdesk</span>
+            {/* Brand name — mobile only (sidebar shows it on desktop) */}
+            <span className="text-[15px] font-semibold text-foreground lg:hidden">Helpdesk</span>
           </div>
 
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
           >
             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
