@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -177,12 +179,13 @@ function TicketsChartSkeleton() {
 }
 
 export function HomePage() {
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
   const {
     data: stats,
     isLoading: statsLoading,
     error: statsError,
     refetch,
-    isFetching,
   } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () =>
@@ -215,11 +218,14 @@ export function HomePage() {
           <p className="mt-1 text-sm text-muted-foreground">Live overview of your support queue</p>
         </div>
         <button
-          onClick={() => refetch()}
-          disabled={isFetching}
+          onClick={async () => {
+            flushSync(() => setIsRefreshing(true))
+            try { await refetch() } finally { setIsRefreshing(false) }
+          }}
+          disabled={isRefreshing}
           className="flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 transition-all duration-150 shadow-sm cursor-pointer"
         >
-          <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+          <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'spinning')} />
           Refresh
         </button>
       </div>

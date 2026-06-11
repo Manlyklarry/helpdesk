@@ -155,3 +155,11 @@
 .fade-in {
   animation: fade-in 0.25s ease both;
 }
+
+/* Spin animation — defined explicitly so it works regardless of Tailwind scanning */
+@keyframes icon-spin {
+  to { transform: rotate(360deg); }
+}
+.spinning {
+  animation: icon-spin 0.7s linear infinite;
+}
