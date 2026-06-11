@@ -19,9 +19,12 @@ function ProtectedRoute({
 
   if (isPending || error) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <div className="w-[240px] shrink-0 bg-sidebar border-r border-sidebar-border" />
-        <main className="flex-1 px-8 py-10">
+      <div className="min-h-screen bg-background">
+        <div className="flex h-14 items-center gap-3 border-b border-border px-4">
+          <Skeleton className="h-8 w-8 rounded-lg" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <main className="px-8 py-10">
           <Skeleton className="h-6 w-40 mb-6" />
           <div className="grid grid-cols-4 gap-4 mb-6">
             {Array.from({ length: 4 }).map((_, i) => (

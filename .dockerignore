@@ -1,0 +1,33 @@
+# Dependencies (installed inside Docker)
+node_modules
+**/node_modules
+
+# Built output (built inside Docker)
+client/dist
+
+# Environment files — never bake secrets into the image
+.env
+**/.env
+**/.env.*
+
+# Git
+.git
+.gitignore
+
+# Dev tooling
+dev.ts
+e2e/
+playwright.config.ts
+playwright-report/
+test-results/
+blob-report/
+
+# Claude / IDE
+.claude/
+.vscode/
+
+# Dev-only docs
+CLAUDE.md
+implementation-plan.md
+project-scope.md
+tech-stack.md

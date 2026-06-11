@@ -5,6 +5,7 @@ Sentry.init({
 });
 
 import "dotenv/config";
+import { join } from "path";
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -53,6 +54,16 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json());
 
 app.use("/api", router);
+
+// Production: serve the built React app and handle client-side routing
+if (process.env.NODE_ENV === "production") {
+  const distPath = join(import.meta.dirname, "../../client/dist");
+  app.use(express.static(distPath));
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api/")) return next();
+    res.sendFile(join(distPath, "index.html"));
+  });
+}
 
 Sentry.setupExpressErrorHandler(app);
 

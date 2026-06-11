@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import type { Resolver } from 'react-hook-form'
 
-export function makeZodResolver<T extends z.ZodTypeAny>(schema: T): Resolver<z.infer<T>> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function makeZodResolver<T extends z.ZodTypeAny>(schema: T): Resolver<any> {
   return async (values) => {
     const result = schema.safeParse(values)
     if (result.success) return { values: result.data, errors: {} }
