@@ -4,9 +4,9 @@ import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '../src/lib/db.js'
 import { AI_AGENT_EMAIL } from '../src/lib/constants.js'
 
-if (process.env.NODE_ENV === 'production') {
-  console.error('Seed script must not run in production')
-  process.exit(1)
+if (process.env.NODE_ENV === 'production' && !process.env.FORCE_SEED) {
+  console.log('Seed skipped in production (set FORCE_SEED=true to override)')
+  process.exit(0)
 }
 
 const email = process.env.SEED_ADMIN_EMAIL
