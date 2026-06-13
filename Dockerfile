@@ -69,4 +69,4 @@ EXPOSE 3000
 # Run pending migrations then start the server.
 # Use the Prisma binary from Bun's package store directly — bunx would download
 # a fresh copy because .bun/node_modules/prisma isn't on the standard .bin path.
-CMD ["sh", "-c", "cd /app/server && bun /app/node_modules/.bun/node_modules/prisma/build/index.js migrate deploy && bun src/index.ts"]
+CMD ["sh", "-c", "cd /app/server && bun /app/node_modules/.bun/node_modules/prisma/build/index.js migrate deploy && bun prisma/seed.ts && bun src/index.ts"]
