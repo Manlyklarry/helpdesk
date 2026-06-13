@@ -18,7 +18,7 @@ See `project-scope.md` for full feature list and `implementation-plan.md` for th
 | Auth       | Better Auth (email/password, database sessions via PostgreSQL) |
 | HTTP client | Axios (client-side API calls)  |
 | Server state | TanStack Query v5 (useQuery, useMutation) |
-| AI         | Anthropic Claude API            |
+| AI         | OpenAI API (`@ai-sdk/openai`, model: `gpt-4o-mini`); env var: `OPENAI_API_KEY` |
 | Email      | SendGrid (Inbound Parse webhook + outbound) |
 | Validation | Zod (client forms via react-hook-form resolver + server request bodies) |
 
