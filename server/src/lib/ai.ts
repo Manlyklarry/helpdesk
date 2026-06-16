@@ -2,7 +2,7 @@ import { generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { COMPANY_NAME, COMPANY_DOMAIN } from './constants.js'
 
-const model = openai('gpt-5-nano')
+const model = openai('gpt-4o-mini')
 
 const VALID_CATEGORIES = ['general', 'technical', 'refund'] as const
 type Category = (typeof VALID_CATEGORIES)[number]
