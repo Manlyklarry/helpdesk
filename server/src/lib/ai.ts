@@ -1,4 +1,5 @@
-import { generateText } from 'ai'
+import { generateText, generateObject } from 'ai'
+import { z } from 'zod'
 import { createOpenAI } from '@ai-sdk/openai'
 import { COMPANY_NAME, COMPANY_DOMAIN } from './constants.js'
 
@@ -48,35 +49,34 @@ export async function summarizeTicket(
   return text
 }
 
+const autoResolveSchema = z.object({
+  canResolve: z.boolean(),
+  reply: z.string().optional(),
+})
+
 export async function autoResolveTicket(
   subject: string,
   body: string,
   knowledgeBase: string,
   customerFirstName: string,
 ): Promise<{ canResolve: false } | { canResolve: true; reply: string }> {
-  const { text } = await generateText({
+  const { object } = await generateObject({
     model,
+    schema: autoResolveSchema,
     system: [
       `You are an AI support agent for ${COMPANY_NAME}${COMPANY_DOMAIN ? ` (${COMPANY_DOMAIN})` : ''}.`,
-      'Given a customer support ticket and the official support knowledge base, decide if you can fully resolve the ticket.',
-      'You CANNOT resolve if any escalation rule from the knowledge base applies (legal threats, refund outside 30 days, chargebacks, account security concerns, or low confidence).',
-      'You CANNOT resolve if the knowledge base does not cover the topic or the answer requires account-specific information.',
-      'If you CAN resolve: write a professional, helpful reply addressing the customer by their first name, based only on the knowledge base.',
-      `Sign off as "${COMPANY_NAME} Support Team"${COMPANY_DOMAIN ? ` and include ${COMPANY_DOMAIN} in the signature` : ''}.`,
-      'Respond with valid JSON only — no markdown fences, no extra text.',
-      'Format: {"canResolve":true,"reply":"..."} or {"canResolve":false}',
+      'Given a customer support ticket and the official knowledge base, decide if you can fully resolve it.',
+      'Set canResolve to true if the knowledge base contains enough information to directly answer the customer\'s question.',
+      'Set canResolve to false only if: the topic is completely absent from the knowledge base, the issue requires manual account investigation, or escalation rules explicitly apply (legal threats, chargebacks, unverifiable refund eligibility).',
+      'If canResolve is true, write a warm, professional reply addressing the customer by their first name.',
+      `Sign off as "${COMPANY_NAME} Support Team"${COMPANY_DOMAIN ? ` (${COMPANY_DOMAIN})` : ''}.`,
     ].join(' '),
     prompt: `Knowledge Base:\n${knowledgeBase}\n\nTicket Subject: ${subject}\n\nCustomer (${customerFirstName}) wrote:\n${body.slice(0, 3_000)}`,
   })
-  try {
-    const parsed = JSON.parse(text.trim()) as { canResolve: boolean; reply?: string }
-    if (parsed.canResolve === true && typeof parsed.reply === 'string' && parsed.reply.length > 0) {
-      return { canResolve: true, reply: parsed.reply }
-    }
-    return { canResolve: false }
-  } catch {
-    return { canResolve: false }
+  if (object.canResolve && object.reply && object.reply.length > 0) {
+    return { canResolve: true, reply: object.reply }
   }
+  return { canResolve: false }
 }
 
 export async function classifyTicket(subject: string, body: string): Promise<Category | null> {
