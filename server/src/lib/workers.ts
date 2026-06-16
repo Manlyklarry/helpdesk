@@ -111,6 +111,7 @@ export async function startWorkers() {
       }
     } catch (err) {
       Sentry.captureException(err)
+      console.error(`[auto-resolve] worker error for ticket #${ticketId}:`, err)
       // Error fallback: unassign so the ticket isn't stuck assigned to AI
       await prisma.ticket.update({
         where: { id: ticketId },

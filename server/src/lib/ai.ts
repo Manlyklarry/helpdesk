@@ -1,5 +1,4 @@
-import { generateText, generateObject } from 'ai'
-import { z } from 'zod'
+import { generateText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { COMPANY_NAME, COMPANY_DOMAIN } from './constants.js'
 
@@ -49,34 +48,47 @@ export async function summarizeTicket(
   return text
 }
 
-const autoResolveSchema = z.object({
-  canResolve: z.boolean(),
-  reply: z.string().optional(),
-})
-
 export async function autoResolveTicket(
   subject: string,
   body: string,
   knowledgeBase: string,
   customerFirstName: string,
 ): Promise<{ canResolve: false } | { canResolve: true; reply: string }> {
-  const { object } = await generateObject({
+  const { text } = await generateText({
     model,
-    schema: autoResolveSchema,
     system: [
       `You are an AI support agent for ${COMPANY_NAME}${COMPANY_DOMAIN ? ` (${COMPANY_DOMAIN})` : ''}.`,
       'Given a customer support ticket and the official knowledge base, decide if you can fully resolve it.',
-      'Set canResolve to true if the knowledge base contains enough information to directly answer the customer\'s question.',
-      'Set canResolve to false only if: the topic is completely absent from the knowledge base, the issue requires manual account investigation, or escalation rules explicitly apply (legal threats, chargebacks, unverifiable refund eligibility).',
-      'If canResolve is true, write a warm, professional reply addressing the customer by their first name.',
+      'Set canResolve to true if the knowledge base contains enough information to directly answer the customer.',
+      'Set canResolve to false only if the topic is absent from the knowledge base or requires manual account investigation.',
+      'If canResolve is true, write a warm professional reply addressing the customer by their first name.',
       `Sign off as "${COMPANY_NAME} Support Team"${COMPANY_DOMAIN ? ` (${COMPANY_DOMAIN})` : ''}.`,
+      'Output a raw JSON object with no markdown, no code fences, no extra text.',
+      'Format: {"canResolve":true,"reply":"<full reply here>"} or {"canResolve":false}',
     ].join(' '),
     prompt: `Knowledge Base:\n${knowledgeBase}\n\nTicket Subject: ${subject}\n\nCustomer (${customerFirstName}) wrote:\n${body.slice(0, 3_000)}`,
   })
-  if (object.canResolve && object.reply && object.reply.length > 0) {
-    return { canResolve: true, reply: object.reply }
+
+  // Strip markdown code fences or any text before/after the JSON object
+  let cleaned = text.trim()
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/s)
+  if (fenceMatch) cleaned = fenceMatch[1].trim()
+  const objectMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (objectMatch) cleaned = objectMatch[0]
+
+  console.log(`[auto-resolve] raw response for "${subject.slice(0, 60)}": ${cleaned.slice(0, 300)}`)
+
+  try {
+    const parsed = JSON.parse(cleaned) as { canResolve: boolean; reply?: string }
+    if (parsed.canResolve === true && typeof parsed.reply === 'string' && parsed.reply.length > 0) {
+      return { canResolve: true, reply: parsed.reply }
+    }
+    console.log(`[auto-resolve] decided not to resolve: "${subject.slice(0, 60)}"`)
+    return { canResolve: false }
+  } catch {
+    console.error(`[auto-resolve] JSON parse failed for "${subject.slice(0, 60)}": ${cleaned.slice(0, 200)}`)
+    return { canResolve: false }
   }
-  return { canResolve: false }
 }
 
 export async function classifyTicket(subject: string, body: string): Promise<Category | null> {
