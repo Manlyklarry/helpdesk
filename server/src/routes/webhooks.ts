@@ -115,15 +115,14 @@ async function processInboundEmail(data: NormalizedEmail, opts: ProcessOptions =
 }
 
 // Normalised JSON webhook — accepts the schema directly (used by tests and non-SendGrid senders).
-// Creates tickets as 'open' immediately so they appear in the tickets list without waiting for
-// the AI pipeline that the /sendgrid endpoint triggers.
+// Goes through the full AI pipeline (classify + auto-resolve) same as the SendGrid webhook.
 router.post('/email', async (req, res) => {
   const parsed = normalizedEmailSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(200).json({ ok: false, error: 'Invalid payload' })
   }
   try {
-    await processInboundEmail(parsed.data, { initialStatus: 'open' })
+    await processInboundEmail(parsed.data)
     return res.json({ ok: true })
   } catch (err) {
     Sentry.captureException(err)
