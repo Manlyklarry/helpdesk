@@ -1,7 +1,8 @@
 import { generateText } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI } from '@ai-sdk/openai'
 import { COMPANY_NAME, COMPANY_DOMAIN } from './constants.js'
 
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const model = openai('gpt-4o-mini')
 
 const VALID_CATEGORIES = ['general', 'technical', 'refund'] as const

@@ -84,6 +84,13 @@ process.on("uncaughtException", (err) => {
 });
 
 async function main() {
+  const openAiKey = process.env.OPENAI_API_KEY;
+  if (!openAiKey) {
+    console.warn("[startup] OPENAI_API_KEY is not set — AI features will fail");
+  } else {
+    console.log(`[startup] OPENAI_API_KEY present (${openAiKey.slice(0, 8)}...)`);
+  }
+
   await boss.start();
   await startWorkers();
   app.listen(PORT, () => {

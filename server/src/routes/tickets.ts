@@ -220,8 +220,9 @@ router.post('/:id/polish-reply', async (req, res) => {
     return res.json({ polished })
   } catch (err) {
     Sentry.captureException(err)
+    const reason = err instanceof Error ? err.message : String(err)
     console.error('Failed to polish reply:', err)
-    return res.status(500).json({ error: 'Failed to polish reply' })
+    return res.status(500).json({ error: `Failed to polish reply: ${reason}` })
   }
 })
 

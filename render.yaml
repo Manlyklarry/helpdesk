@@ -32,6 +32,8 @@ services:
         sync: false
       - key: SENTRY_DSN
         value: ""
+      - key: SENTRY_ENVIRONMENT
+        value: production
 
 databases:
   - name: helpdesk-db
