@@ -23,7 +23,7 @@ export async function getAiAgentId(): Promise<string | null> {
   return cachedAiAgentId
 }
 
-const KB_PATH = join(import.meta.dirname, '../../knowledge-base.md')
+const KB_PATH = join(import.meta.dirname, '../../../knowledge-base.md')
 
 type ClassifyJobData = { ticketId: number; subject: string; text: string }
 type AutoResolveJobData = { ticketId: number; subject: string; text: string; fromName: string }
