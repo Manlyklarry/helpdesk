@@ -7,6 +7,7 @@ import { prisma } from '../lib/db.js'
 import { sanitizeEmailHtml } from '../lib/sanitize.js'
 import { boss } from '../lib/boss.js'
 import { CLASSIFY_QUEUE, AUTO_RESOLVE_QUEUE, getAiAgentId } from '../lib/workers.js'
+import { broadcastSse } from '../lib/sse.js'
 
 const router = Router()
 // multer populates req.body (text fields) and req.files (attachments);
@@ -105,6 +106,8 @@ async function processInboundEmail(data: NormalizedEmail, opts: ProcessOptions =
     },
     select: { id: true },
   })
+
+  broadcastSse('new-ticket', { id: ticket.id, subject, fromName })
 
   if (initialStatus === 'new') {
     await Promise.all([

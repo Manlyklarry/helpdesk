@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router'
 import { Menu, Sun, Moon } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { NotificationBell } from './NotificationBell'
 import { useTheme } from '../contexts/theme'
+import { useNotifications } from '../hooks/useNotifications'
 import { cn } from '@/lib/utils'
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const { isDark, toggle: toggleTheme } = useTheme()
+  const { notifications, unread, markAllRead, requestPermission } = useNotifications()
 
   useEffect(() => {
     setOpen(false)
@@ -53,13 +56,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="text-[15px] font-semibold text-foreground lg:hidden">Helpdesk</span>
           </div>
 
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell
+              notifications={notifications}
+              unread={unread}
+              onOpen={markAllRead}
+              onRequestPermission={requestPermission}
+            />
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          </div>
         </header>
 
         <main className="flex-1">
