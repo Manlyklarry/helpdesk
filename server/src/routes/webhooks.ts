@@ -134,13 +134,21 @@ router.post('/email', async (req, res) => {
 // SendGrid Inbound Parse webhook
 router.post('/sendgrid', upload, async (req, res) => {
   const files: Express.Multer.File[] = (req as any).files ?? []
-  const parser = new Parse(
-    { keys: PARSE_KEYS },
-    // parser's reduce() crashes on an empty array — only pass files when present
-    { body: req.body, ...(files.length ? { files } : {}) },
-  )
 
-  const fields = parser.keyValues()
+  let fields: Record<string, unknown>
+  try {
+    const parser = new Parse(
+      { keys: PARSE_KEYS },
+      // parser's reduce() crashes on an empty array — only pass files when present
+      { body: req.body ?? {}, ...(files.length ? { files } : {}) },
+    )
+    fields = parser.keyValues()
+  } catch (err) {
+    console.error('Failed to parse SendGrid payload:', err)
+    // 200 prevents SendGrid retry storms / fails URL validation on non-2xx
+    return res.status(200).json({ ok: false, error: 'Invalid payload' })
+  }
+
   const rawHeaders: string = typeof fields.headers === 'string' ? fields.headers : ''
 
   // Message-ID and In-Reply-To live in the raw headers string
