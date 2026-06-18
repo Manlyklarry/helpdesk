@@ -9,10 +9,31 @@ export type TicketNotification = {
 }
 
 const MAX_NOTIFICATIONS = 20
+const STORAGE_KEY = 'helpdesk:notifications'
+
+type StoredState = {
+  notifications: TicketNotification[]
+  unread: number
+}
+
+function loadFromStorage(): StoredState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw) as StoredState
+  } catch {}
+  return { notifications: [], unread: 0 }
+}
+
+function saveToStorage(state: StoredState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {}
+}
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<TicketNotification[]>([])
-  const [unread, setUnread] = useState(0)
+  const initial = loadFromStorage()
+  const [notifications, setNotifications] = useState<TicketNotification[]>(initial.notifications)
+  const [unread, setUnread] = useState(initial.unread)
   const queryClient = useQueryClient()
 
   // Stable ref so the SSE effect closure doesn't need addNotification as a dep
@@ -20,8 +41,15 @@ export function useNotifications() {
 
   const addNotification = useCallback(
     (n: TicketNotification) => {
-      setNotifications((prev) => [n, ...prev].slice(0, MAX_NOTIFICATIONS))
-      setUnread((prev) => prev + 1)
+      setNotifications((prev) => {
+        const next = [n, ...prev].slice(0, MAX_NOTIFICATIONS)
+        setUnread((u) => {
+          const nextUnread = u + 1
+          saveToStorage({ notifications: next, unread: nextUnread })
+          return nextUnread
+        })
+        return next
+      })
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       if (Notification.permission === 'granted') {
@@ -48,7 +76,13 @@ export function useNotifications() {
     return () => es.close()
   }, [])
 
-  const markAllRead = useCallback(() => setUnread(0), [])
+  const markAllRead = useCallback(() => {
+    setUnread(0)
+    setNotifications((prev) => {
+      saveToStorage({ notifications: prev, unread: 0 })
+      return prev
+    })
+  }, [])
 
   const requestPermission = useCallback(async () => {
     if (Notification.permission === 'default') {
